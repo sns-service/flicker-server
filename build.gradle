@@ -46,7 +46,7 @@ jib {
 		image = 'openjdk:21'
 	}
 	to {
-		image = 'public.ecr.aws/o4o3m8u3/user-server'
+		image = '{ecr-주소}/{이미지 이름}'
 		tags = ['0.0.1']
 	}
 	container {
