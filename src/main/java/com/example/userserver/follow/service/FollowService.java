@@ -1,6 +1,7 @@
 package com.example.userserver.follow.service;
 
 import com.example.userserver.exception.BadRequestException;
+import com.example.userserver.follow.dto.FollowInfo;
 import com.example.userserver.follow.entity.Follow;
 import com.example.userserver.follow.repository.FollowRepository;
 import com.example.userserver.user.dto.UserInfo;
@@ -20,12 +21,23 @@ public class FollowService {
         return followRepository.findByUserIdAndFollowerId(userId, followerId).isPresent();
     }
 
-    public Follow followUser(int userId, int followerId) {
+    @Transactional
+    public FollowInfo followUser(int userId, int followerId) {
         if (isFollow(userId, followerId)) {  // 이미 팔로우 한 경우에는, 더 이상 팔로우 할 것이 없다.
             return null;
         }
 
-        return followRepository.save(new Follow(userId, followerId));
+        Follow follow = followRepository.save(new Follow(userId, followerId));
+        return changeToFollowInfo(follow);
+    }
+
+    private static FollowInfo changeToFollowInfo(Follow follow) {
+        return FollowInfo.builder()
+                .followId(follow.getFollowId())
+                .userId(follow.getUserId())
+                .followerId(follow.getFollowerId())
+                .followDatetime(follow.getFollowDatetime())
+                .build();
     }
 
     @Transactional
