@@ -1,8 +1,6 @@
 package com.example.userserver.follow.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -11,9 +9,7 @@ import java.time.ZonedDateTime;
 @Entity
 @Table
 @Getter
-@AllArgsConstructor
 @NoArgsConstructor
-@Builder
 public class Follow {
 
     @Id
@@ -27,6 +23,11 @@ public class Follow {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "follow_datetime")
     private ZonedDateTime followDatetime;
+
+    public Follow(int userId, int followerId) {
+        this.userId = userId;
+        this.followerId = followerId;
+    }
 
     @PrePersist
     protected void onCreate() {
