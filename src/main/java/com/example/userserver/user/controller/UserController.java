@@ -22,10 +22,6 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserInfo> getUserInfo(@PathVariable("id") int id) {
         UserInfo user = userService.getUserById(id);
-        if (user == null) {
-            return ResponseEntity.notFound().build();
-        }
-
         return ResponseEntity.ok(user);
     }
 
@@ -33,5 +29,10 @@ public class UserController {
     public ResponseEntity<UserInfo> getUserInfoByName(@PathVariable("name") String name) {
         UserInfo user = userService.getUserByName(name);
         return ResponseEntity.ok(user);
+    }
+
+    @PostMapping("/signIn")
+    public UserInfo signIn(@RequestBody UserRequest signInRequest) {
+        return userService.signIn(signInRequest);
     }
 }
