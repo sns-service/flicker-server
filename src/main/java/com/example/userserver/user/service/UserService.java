@@ -9,6 +9,7 @@ import com.example.userserver.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ public class UserService {
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
     private final UserRepository userRepository;
 
+    @Transactional
     public UserInfo createUser(UserRequest userRequest) {
         String hashedPassword = encoder.encode(userRequest.getPlainPassword());
 
@@ -25,7 +27,6 @@ public class UserService {
         }
 
         User user = new User(userRequest.getUsername(), userRequest.getEmail(), hashedPassword);
-
         User savedUser = userRepository.save(user);
 
         return new UserInfo(savedUser);
@@ -33,6 +34,7 @@ public class UserService {
 
     public UserInfo getUserById(int userId) {
         User user = userRepository.findById(userId).orElse(null);
+
         if (user == null) {
             throw new DataNotFoundException("user not found");
         }
@@ -42,6 +44,7 @@ public class UserService {
 
     public UserInfo getUserByName(String name) {
         User user = userRepository.findByUsername(name);
+
         if (user == null) {
            throw new DataNotFoundException("user not found");
         }
@@ -56,6 +59,10 @@ public class UserService {
             throw new BadRequestException("아이디 혹은 비밀번호가 일치하지 않습니다.");
         }
 
+        return checkIfPasswordMatches(signInRequest, user);
+    }
+
+    private UserInfo checkIfPasswordMatches(UserRequest signInRequest, User user) {
         boolean isPasswordMatch = encoder.matches(signInRequest.getPlainPassword(), user.getPassword());
 
         if (isPasswordMatch) {
