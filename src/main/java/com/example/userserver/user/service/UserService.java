@@ -53,7 +53,7 @@ public class UserService {
         User user = userRepository.findByUsername(signInRequest.getUsername());
 
         if (user == null) {
-            throw new RuntimeException("no username found!");
+            throw new BadRequestException("아이디 혹은 비밀번호가 일치하지 않습니다.");
         }
 
         boolean isPasswordMatch = encoder.matches(signInRequest.getPlainPassword(), user.getPassword());
@@ -61,7 +61,7 @@ public class UserService {
         if (isPasswordMatch) {
             return new UserInfo(user);
         } else {
-            throw new BadRequestException();
+            throw new BadRequestException("아이디 혹은 비밀번호가 일치하지 않습니다.");
         }
     }
 }
