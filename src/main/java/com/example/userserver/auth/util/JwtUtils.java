@@ -2,10 +2,13 @@ package com.example.userserver.auth.util;
 
 import com.example.userserver.auth.AuthProperties;
 import com.example.userserver.user.entity.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -69,5 +72,26 @@ public class JwtUtils {
         map.put("email", user.getEmail());
         map.put("username", user.getUsername());
         return map;
+    }
+
+    public static Claims getClaimsFromAccessToken(String accessToken) {
+        return Jwts.parserBuilder().setSigningKey(AuthProperties.getAccessSecret()).build().parseClaimsJws(accessToken).getBody();
+    }
+
+    public static Claims getClaimsFromRefreshToken(String refreshToken) {
+        return Jwts.parserBuilder().setSigningKey(AuthProperties.getRefreshSecret()).build().parseClaimsJws(refreshToken).getBody();
+    }
+
+    public static String extractRefreshTokenFromCookies(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("dev-refresh".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }

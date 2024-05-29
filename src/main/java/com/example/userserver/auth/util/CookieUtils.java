@@ -1,5 +1,7 @@
 package com.example.userserver.auth.util;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseCookie;
 
 public class CookieUtils {
@@ -42,5 +44,18 @@ public class CookieUtils {
                 .path("/")
                 .maxAge(JwtUtils.getACCESS_TOKEN_VALIDITY_TIME())
                 .build();
+    }
+
+    public static String extractAccessTokenFromCookies(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("sns-access".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }
