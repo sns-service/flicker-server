@@ -46,21 +46,15 @@ public class UserService {
     }
 
     public UserInfo getUserByName(String name) {
-        User user = userRepository.findByUsername(name);
-
-        if (user == null) {
-           throw new DataNotFoundException("user not found");
-        }
-
-        return new UserInfo(user);
+        return userRepository.findByUsername(name)
+                .map(UserInfo::new)
+                .orElseThrow(() -> new DataNotFoundException("user not found"));
     }
 
-    public UserInfo signIn(UserRequest signInRequest) {
-        User user = userRepository.findByUsername(signInRequest.getUsername());
 
-        if (user == null) {
-            throw new BadRequestException("아이디 혹은 비밀번호가 일치하지 않습니다.");
-        }
+    public UserInfo signIn(UserRequest signInRequest) {
+        User user = userRepository.findByUsername(signInRequest.getUsername())
+                .orElseThrow(() -> new BadRequestException("아이디 혹은 비밀번호가 일치하지 않습니다."));
 
         return checkIfPasswordMatches(signInRequest, user);
     }
