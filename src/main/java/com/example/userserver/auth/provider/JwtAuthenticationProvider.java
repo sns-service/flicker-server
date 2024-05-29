@@ -20,10 +20,10 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         UsernamePasswordAuthenticationToken token = (UsernamePasswordAuthenticationToken) authentication;
 
-        String email = token.getName();
+        String username = token.getName();
         String password = token.getCredentials().toString();
 
-        CustomUserDetails savedUser = (CustomUserDetails) customMemberDetailsService.loadUserByUsername(email);
+        CustomUserDetails savedUser = (CustomUserDetails) customMemberDetailsService.loadUserByUsername(username);
 
         if (!passwordEncoder.matches(password, savedUser.getPassword())) {
             throw new BadCredentialsException("로그인 정보가 올바르지 않습니다.");
