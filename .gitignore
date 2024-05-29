@@ -25,6 +25,8 @@ bin/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+user-deploy.yaml
+user-service.yaml
 
 ### NetBeans ###
 /nbproject/private/

@@ -2,10 +2,14 @@ package com.example.userserver.follow.service;
 
 import com.example.userserver.exception.BadRequestException;
 import com.example.userserver.follow.dto.FollowInfo;
+import com.example.userserver.follow.dto.FollowMessage;
 import com.example.userserver.follow.entity.Follow;
 import com.example.userserver.follow.repository.FollowRepository;
 import com.example.userserver.user.dto.UserInfo;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +20,8 @@ import java.util.List;
 public class FollowService {
 
     private final FollowRepository followRepository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     public boolean isFollow(int userId, int followerId) {
         return followRepository.findByUserIdAndFollowerId(userId, followerId).isPresent();
@@ -27,7 +33,9 @@ public class FollowService {
             return null;
         }
 
+        sendFollowerMessage(userId, followerId, true);
         Follow follow = followRepository.save(new Follow(userId, followerId));
+
         return changeToFollowInfo(follow);
     }
 
@@ -45,8 +53,19 @@ public class FollowService {
         Follow follow = followRepository.findByUserIdAndFollowerId(userId, followerId)
                 .orElseThrow(() -> new BadRequestException());
 
+        sendFollowerMessage(userId, followerId, false);
         followRepository.delete(follow);
+
         return true;
+    }
+
+    private void sendFollowerMessage(int userId, int followerId, boolean isFollow) {
+        FollowMessage message = new FollowMessage(userId, followerId, isFollow);
+        try {
+            kafkaTemplate.send("user.follower", objectMapper.writeValueAsString(message));
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException();
+        }
     }
 
     /**
