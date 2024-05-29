@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.example.userserver.auth.util.SecurityContextHolderUtils.getUserId;
+
 @RestController
 @RequestMapping("/api/follows")
 @RequiredArgsConstructor
@@ -16,31 +18,30 @@ public class FollowController {
 
     private final FollowService followService;
 
-    @GetMapping("followers/{userId}")
-    public List<UserInfo> listFollowers(@PathVariable("userId") int userId) {
-        return followService.listFollower(userId);
+    @GetMapping("/followers")
+    public List<UserInfo> listFollowers() {
+        return followService.listFollower(getUserId());
     }
 
-    @GetMapping("/followings/{userId}")
-    public List<UserInfo> listFollowings(@PathVariable("userId") int userId) {
-        return followService.listFollowing(userId);
+    @GetMapping("/followings")
+    public List<UserInfo> listFollowings() {
+        return followService.listFollowing(getUserId());
     }
 
-    @GetMapping("/follow/{userId}/{followerId}")
-    public boolean isFollow(
-            @PathVariable("userId") int userId,
-            @PathVariable("followerId") int followerId
-    ) {
-        return followService.isFollow(userId, followerId);
+    @GetMapping("/follow/{userId}")
+    public boolean isFollow(@PathVariable("userId") int userId) {
+        return followService.isFollow(userId, getUserId());
     }
 
     @PostMapping("/follow")
     public FollowInfo followUser(@RequestBody FollowRequest followRequest) {
-        return followService.followUser(followRequest.getUserId(), followRequest.getFollowerId());
+        int followerId = getUserId();
+        return followService.followUser(followRequest.getUserId(), followerId);
     }
 
     @PostMapping("/unfollow")
     public Boolean unfollowUser(@RequestBody FollowRequest unfollowRequest) {
-        return followService.unfollowUser(unfollowRequest.getUserId(), unfollowRequest.getFollowerId());
+        int followerId = getUserId();
+        return followService.unfollowUser(unfollowRequest.getUserId(), followerId);
     }
 }
