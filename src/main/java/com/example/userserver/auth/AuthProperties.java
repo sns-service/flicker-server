@@ -14,7 +14,7 @@ public class AuthProperties {
         this.accessSecret = accessSecret;
     }
 
-    @Value("${sns.jwt.secret-key}")
+    @Value("${sns.jwt.refresh-key}")
     private void setRefreshSecret(String refreshSecret) {
         this.refreshSecret = refreshSecret;
     }

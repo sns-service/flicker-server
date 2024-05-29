@@ -87,7 +87,7 @@ public class JwtUtils {
 
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                if ("dev-refresh".equals(cookie.getName())) {
+                if ("sns-refresh".equals(cookie.getName())) {
                     return cookie.getValue();
                 }
             }
