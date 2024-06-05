@@ -22,10 +22,10 @@ public class UserService {
     public UserInfo createUser(UserRequest userRequest) {
         String hashedPassword = encoder.encode(userRequest.getPlainPassword());
 
-        if (userRepository.findByUsername(userRequest.getUsername()) != null) {
+        if (userRepository.findByUsername(userRequest.getUsername()).isPresent()) {
             throw new BadRequestException("이미 존재하는 닉네임입니다.");
         }
-        if (userRepository.findByEmail(userRequest.getEmail()) != null) {
+        if (userRepository.findByEmail(userRequest.getEmail()).isPresent()) {
             throw new BadRequestException("이미 존재하는 이메일입니다.");
         }
 

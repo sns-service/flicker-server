@@ -4,6 +4,7 @@ import com.example.userserver.auth.entity.CustomUserDetails;
 import com.example.userserver.auth.entity.RefreshToken;
 import com.example.userserver.auth.repository.RefreshTokenRepository;
 import com.example.userserver.auth.util.ResponseUtils;
+import com.example.userserver.user.dto.UserInfo;
 import com.example.userserver.user.entity.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -72,7 +73,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         ResponseCookie accessTokenCookie = generateAccessTokenCookie(accessToken);
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
 
-        ResponseUtils.createResponseBody(response, HttpStatus.OK);
+        ResponseUtils.createResponseBody(response, new UserInfo(user), HttpStatus.OK);
     }
 
     private int saveRefreshToken(User user, String refreshToken) {

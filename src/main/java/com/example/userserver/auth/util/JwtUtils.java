@@ -7,8 +7,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -28,7 +26,7 @@ public class JwtUtils {
     private static final long ACCESS_TOKEN_VALIDITY_TIME = TOKEN_VALIDITY_TIME_IN_MINUTES * 15; // 15분
 
     @Getter
-    private static final long REFRESH_TOKEN_VALIDITY_TIME = TOKEN_VALIDITY_TIME_IN_MINUTES * 60 * 12;  // 12시간
+    private static final long REFRESH_TOKEN_VALIDITY_TIME = TOKEN_VALIDITY_TIME_IN_MINUTES * 60 * 48;  // 48시간
 
     public static String createAccessToken(User user, int refreshTokenId) {
         return Jwts.builder()
@@ -80,18 +78,5 @@ public class JwtUtils {
 
     public static Claims getClaimsFromRefreshToken(String refreshToken) {
         return Jwts.parserBuilder().setSigningKey(AuthProperties.getRefreshSecret()).build().parseClaimsJws(refreshToken).getBody();
-    }
-
-    public static String extractRefreshTokenFromCookies(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("sns-refresh".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
     }
 }

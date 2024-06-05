@@ -25,8 +25,7 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import java.io.IOException;
 import java.util.Optional;
 
-import static com.example.userserver.auth.util.CookieUtils.extractAccessTokenFromCookies;
-import static com.example.userserver.auth.util.CookieUtils.generateAccessTokenCookie;
+import static com.example.userserver.auth.util.CookieUtils.*;
 import static com.example.userserver.auth.util.JwtUtils.*;
 
 public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
@@ -43,12 +42,15 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String accessToken = extractAccessTokenFromCookies(request);
+        System.out.println("accessToken = " + accessToken);
 
         if (accessToken == null) {
+            System.out.println("accessToken = " + accessToken);
             filterChain.doFilter(request, response);
             return;
         }
         Claims claims = null;
+        System.out.println("claims = " + claims);
 
         try {
             claims = getClaimsFromAccessToken(accessToken);
@@ -57,7 +59,7 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
             String refreshToken = extractRefreshTokenFromCookies(request);
 
             if (!checkIfRefreshTokenValid(refreshToken)) {
-                handleExceptionResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "access-token expired");
+                handleExceptionResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "refresh-token expired");
                 return;
             }
             claims = e.getClaims();
