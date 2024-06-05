@@ -29,6 +29,9 @@ public class FollowService {
 
     @Transactional
     public FollowInfo followUser(int userId, int followerId) {
+        if (userId == followerId) {
+            throw new BadRequestException();
+        }
         if (isFollow(userId, followerId)) {  // 이미 팔로우 한 경우에는, 더 이상 팔로우 할 것이 없다.
             return null;
         }

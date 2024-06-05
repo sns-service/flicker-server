@@ -6,5 +6,4 @@ import lombok.Getter;
 public class FollowRequest {
 
     private int userId;
-    private int followerId;
 }

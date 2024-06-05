@@ -27,6 +27,7 @@ out/
 !**/src/test/**/out/
 user-deploy.yaml
 user-service.yaml
+src/main/resources/**
 
 ### NetBeans ###
 /nbproject/private/
