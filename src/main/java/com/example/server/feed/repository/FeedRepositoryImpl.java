@@ -29,7 +29,7 @@ public class FeedRepositoryImpl implements FeedRepository {
 
     @Override
     public Optional<SocialFeed> findById(int feedId) {
-        return Optional.empty();
+        return feedJpaRepository.findById(feedId);
     }
 
     @Override

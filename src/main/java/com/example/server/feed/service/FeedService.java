@@ -17,7 +17,7 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-public class SocialFeedService {
+public class FeedService {
 
     private final FeedRepository feedRepository;
     private final UserRepository userRepository;
@@ -104,12 +104,14 @@ public class SocialFeedService {
         return randomPosts;
     }
 
-    public boolean likePost(int userId, int postId) {
-        if (feedRepository.isLikePost(userId, postId)) {
-            feedRepository.unlikePost(userId, postId);
+    public boolean likePost(int userId, int feedId) {
+        feedRepository.findById(feedId).orElseThrow(() -> new BadRequestException());
+
+        if (feedRepository.isLikePost(userId, feedId)) {
+            feedRepository.unlikePost(userId, feedId);
             return false;
         } else {
-            feedRepository.likePost(userId, postId);
+            feedRepository.likePost(userId, feedId);
             return true;
         }
     }

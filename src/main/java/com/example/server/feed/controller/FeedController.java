@@ -1,9 +1,8 @@
 package com.example.server.feed.controller;
 
-import com.example.server.feed.dto.*;
 import com.example.server.auth.util.SecurityContextHolderUtils;
-import com.example.server.feed.service.SocialFeedService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.example.server.feed.dto.*;
+import com.example.server.feed.service.FeedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +13,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/feeds")
 @RequiredArgsConstructor
-public class SocialFeedController {
+public class FeedController {
 
-    private final SocialFeedService feedService;
+    private final FeedService feedService;
 
     @GetMapping
     public List<FeedInfo> getAllFeeds() {
@@ -25,7 +24,6 @@ public class SocialFeedController {
         for (FeedInfo feedInfo : feedService.getAllFeeds()) {
             result.add(feedInfo);
         }
-
         return result;
     }
 
@@ -60,8 +58,8 @@ public class SocialFeedController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/like/{postId}")
-    public LikeResponse likePost(@PathVariable("postId") int postId, HttpServletRequest request) {
+    @PostMapping("/like/{postId}")
+    public LikeResponse likePost(@PathVariable("postId") int postId) {
         boolean isLike = feedService.likePost(SecurityContextHolderUtils.getUserId(), postId);
         int count = feedService.countLike(postId);
         return new LikeResponse(count, isLike);

@@ -66,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/feeds/**").permitAll()
                         .requestMatchers("/api/follows/**").authenticated()
+                        .requestMatchers("/api/feeds/**").authenticated()
                         .anyRequest().denyAll()
                 );
 
