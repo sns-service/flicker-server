@@ -14,7 +14,7 @@ public class Follow {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int followId;
+    private int id;
 
     private int userId;
 

@@ -21,8 +21,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import static com.example.userserver.auth.util.CookieUtils.*;
@@ -39,19 +43,25 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
         this.refreshTokenRepository = refreshTokenRepository;
     }
 
+    private final List<RequestMatcher> excludedUrlPatterns = Arrays.asList( // 이 필터 적용 안할 url 지정
+            new AntPathRequestMatcher("/healthcheck/**")
+    );
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        if (isExcludedUrl(request)) {
+            filterChain.doFilter(request, response); //이 필터 스킵, 다음꺼 실행.
+            return;
+        }
         String accessToken = extractAccessTokenFromCookies(request);
-        System.out.println("accessToken = " + accessToken);
 
         if (accessToken == null) {
-            System.out.println("accessToken = " + accessToken);
             filterChain.doFilter(request, response);
             return;
         }
         Claims claims = null;
-        System.out.println("claims = " + claims);
 
+        int userId = 0;
         try {
             claims = getClaimsFromAccessToken(accessToken);
         } catch (ExpiredJwtException e) {
@@ -59,19 +69,21 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
             String refreshToken = extractRefreshTokenFromCookies(request);
 
             if (!checkIfRefreshTokenValid(refreshToken)) {
+                refreshTokenRepository.deleteByUserId(userId);
                 handleExceptionResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "refresh-token expired");
                 return;
             }
             claims = e.getClaims();
 
             int refreshTokenId = ((Integer) claims.get("refreshTokenId")).intValue();
-            int userId = ((Integer) claims.get("userId")).intValue();
+            userId = ((Integer) claims.get("userId")).intValue();
             User user = userRepository.findById(userId).orElseThrow(() -> new DataNotFoundException());
 
             String newAccessToken = createAccessToken(user, refreshTokenId);
             ResponseCookie accessTokenCookie = generateAccessTokenCookie(newAccessToken);
             response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
         } catch (MalformedJwtException e) {
+            refreshTokenRepository.deleteByUserId(userId);
             filterChain.doFilter(request, response);
             return;
         }
@@ -113,6 +125,10 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
             return false;
         }
         return true;
+    }
+
+    private boolean isExcludedUrl(HttpServletRequest request) {
+        return excludedUrlPatterns.stream().anyMatch(pattern -> pattern.matches(request));
     }
 
     private void handleExceptionResponse(HttpServletResponse response, int status, String errorMessage) throws IOException {
