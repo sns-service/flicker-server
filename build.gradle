@@ -55,8 +55,12 @@ jib {
 		image = 'openjdk:21'
 	}
 	to {
-		image = '{ecr-주소}/{이미지 이름}'
-		tags = ['0.0.1']
+		image = 'public.ecr.aws/o4o3m8u3/user-server'
+		tags = ['0.0.5']
+		auth {
+			username = 'AWS'
+			password = System.getenv('AWS_ECR_PASSWORD') ?: 'default_password' // 기본값으로 null 방지
+		}
 	}
 	container {
 		creationTime = 'USE_CURRENT_TIMESTAMP'

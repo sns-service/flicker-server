@@ -44,7 +44,7 @@ public class FollowService {
 
     private static FollowInfo changeToFollowInfo(Follow follow) {
         return FollowInfo.builder()
-                .followId(follow.getFollowId())
+                .followId(follow.getId())
                 .userId(follow.getUserId())
                 .followerId(follow.getFollowerId())
                 .followDatetime(follow.getFollowDatetime())
@@ -72,7 +72,7 @@ public class FollowService {
     }
 
     /**
-     * 나를 팔로우 하고 있는 사람들 (팔로워) 조회 */
+     * 나를 팔로우 하는 사람들 (팔로워) 조회 */
     public List<UserInfo> listFollower(int userId) {
         return followRepository.findFollowersByUserId(userId);
     }
