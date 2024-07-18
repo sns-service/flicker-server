@@ -26,7 +26,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.kafka:spring-kafka'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
 
 	//spring security
 	implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -48,21 +49,4 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
-}
-
-jib {
-	from {
-		image = 'openjdk:21'
-	}
-	to {
-		image = 'public.ecr.aws/o4o3m8u3/user-server'
-		tags = ['0.0.5']
-		auth {
-			username = 'AWS'
-			password = System.getenv('AWS_ECR_PASSWORD') ?: 'default_password' // 기본값으로 null 방지
-		}
-	}
-	container {
-		creationTime = 'USE_CURRENT_TIMESTAMP'
-	}
 }
