@@ -29,7 +29,7 @@ public class FeedController {
 
     @GetMapping("/random")
     public List<SocialPost> listRandomFeeds() {
-        return feedService.getRandomFeeds();
+        return feedService.getRandomFeedsByPaging();
     }
 
     @GetMapping("/user/{userId}")

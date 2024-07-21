@@ -1,6 +1,7 @@
 package com.example.server.user.entity;
 
 import com.example.server.feed.entity.SocialFeed;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,6 +21,7 @@ public class User {
     private int userId;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
+    @JsonManagedReference
     private List<SocialFeed> feeds = new ArrayList<>();
 
     private String username;

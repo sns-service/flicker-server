@@ -1,25 +1,34 @@
 package com.example.server.feed.service;
 
-import com.example.server.feed.dto.CreateFeedRequest;
-import com.example.server.feed.dto.FeedResponse;
 import com.example.server.exception.BadRequestException;
+import com.example.server.feed.dto.CreateFeedRequest;
 import com.example.server.feed.dto.FeedInfo;
+import com.example.server.feed.dto.FeedResponse;
 import com.example.server.feed.dto.SocialPost;
 import com.example.server.feed.entity.SocialFeed;
+import com.example.server.feed.repository.FeedJpaRepository;
 import com.example.server.feed.repository.FeedRepository;
 import com.example.server.user.entity.User;
 import com.example.server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class FeedService {
 
     private final FeedRepository feedRepository;
+    private final FeedJpaRepository feedJpaRepository;
     private final UserRepository userRepository;
 
     public List<FeedInfo> getAllFeeds() {
@@ -78,30 +87,34 @@ public class FeedService {
                 .build();
     }
 
-    public List<SocialPost> listAllFeed() {
-        List<FeedInfo> feedList = feedRepository.findAllFeeds();
+    public List<SocialPost> getRandomFeedsByPaging() {
+        int totalFeeds = (int) feedJpaRepository.count();
+        int pageSize = 100;
+        int totalPages = (totalFeeds + pageSize - 1) / pageSize;
 
-        return feedList.stream().map(
-                feedInfo -> new SocialPost(feedInfo, feedRepository.countLikes(feedInfo.getFeedId()))
-        ).toList();
-    }
+        // 랜덤 페이지 선택
+        Random random = new Random();
+        int randomPageNumber = random.nextInt(totalPages);
 
-    public List<SocialPost> getRandomFeeds() {
-        List<SocialPost> postList = listAllFeed();
-        List<Integer> indices = new ArrayList<>();
+        Pageable pageable = PageRequest.of(randomPageNumber, pageSize);
+        Page<SocialFeed> feedPage = feedRepository.findAll(pageable);
 
-        for (int i = 0; i < postList.size(); i++) {
-            indices.add(i);
+        List<SocialFeed> feeds = new ArrayList<>(feedPage.getContent());
+        Collections.shuffle(feeds);
+
+        // 15개의 랜덤 피드 선택
+        List<SocialFeed> randomFeeds = new ArrayList<>();
+        for (int i = 0; i < Math.min(15, feeds.size()); i++) {
+            randomFeeds.add(feeds.get(i));
         }
 
-        Collections.shuffle(indices, new Random());
-        List<SocialPost> randomPosts = new ArrayList<>();
+        List<FeedInfo> feedInfoList = randomFeeds.stream()
+                .map(FeedInfo::new)
+                .collect(Collectors.toList());
 
-        for (int i = 0; i < 15; i++) {
-            randomPosts.add(postList.get(indices.get(i)));
-        }
-
-        return randomPosts;
+        return feedInfoList.stream()
+                .map(feedInfo -> new SocialPost(feedInfo, feedRepository.countLikes(feedInfo.getFeedId())))
+                .collect(Collectors.toList());
     }
 
     public boolean likePost(int userId, int feedId) {

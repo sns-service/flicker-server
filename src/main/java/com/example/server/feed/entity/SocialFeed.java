@@ -1,6 +1,7 @@
 package com.example.server.feed.entity;
 
 import com.example.server.user.entity.User;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,7 +11,6 @@ import lombok.NoArgsConstructor;
 import java.time.ZonedDateTime;
 
 @Entity
-@Table
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -25,6 +25,7 @@ public class SocialFeed {
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "user_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    @JsonBackReference
     private User user;
 
     @Temporal(TemporalType.TIMESTAMP)
