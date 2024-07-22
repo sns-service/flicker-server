@@ -1,7 +1,6 @@
 package com.example.server.feed.repository;
 
 import com.example.server.feed.dto.FeedInfo;
-import com.example.server.feed.dto.FeedResponse;
 import com.example.server.feed.entity.SocialFeed;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +17,7 @@ public interface FeedRepository {
     void delete(SocialFeed feed);
     Optional<SocialFeed> findById(int feedId);
     List<FeedInfo> findAllFeeds();
-    List<FeedResponse> findFeedsInfoByUploaderId(@Param("uploaderId") int uploaderId);
+    List<SocialFeed> findFeedsInfoByUploaderId(@Param("uploaderId") int uploaderId);
     int likePost(int userId, int postId);
     int unlikePost(int userId, int postId);
     Boolean isLikePost(int userId, int postId);

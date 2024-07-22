@@ -33,13 +33,13 @@ public class FeedController {
     }
 
     @GetMapping("/user/{userId}")
-    public List<FeedResponse> getUserFeeds(@PathVariable("userId") int userId) {
+    public List<SocialPost> getUserFeeds(@PathVariable("userId") int userId) {
         return feedService.getAllFeedsByUploaderId(userId);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<FeedResponse> getFeedById(@PathVariable("id") int id) {
-        FeedResponse result = feedService.getFeedById(id);
+    public ResponseEntity<SocialPost> getFeedById(@PathVariable("id") int id) {
+        SocialPost result = feedService.getFeedById(id);
 
         if (result == null) {
             return ResponseEntity.notFound().build();
@@ -48,7 +48,7 @@ public class FeedController {
     }
 
     @PostMapping
-    public FeedResponse createFeed(@RequestBody CreateFeedRequest feedRequest) {
+    public SocialPost createFeed(@RequestBody CreateFeedRequest feedRequest) {
         return feedService.createFeed(feedRequest, SecurityContextHolderUtils.getUserId());
     }
 
@@ -59,7 +59,7 @@ public class FeedController {
     }
 
     @PostMapping("/like/{postId}")
-    public LikeResponse likePost(@PathVariable("postId") int postId) {
+    public LikeResponse likeFeed(@PathVariable("postId") int postId) {
         boolean isLike = feedService.likePost(SecurityContextHolderUtils.getUserId(), postId);
         int count = feedService.countLike(postId);
         return new LikeResponse(count, isLike);

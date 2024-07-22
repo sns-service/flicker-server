@@ -1,7 +1,6 @@
 package com.example.server.feed.repository;
 
 import com.example.server.feed.dto.FeedInfo;
-import com.example.server.feed.dto.FeedResponse;
 import com.example.server.feed.entity.SocialFeed;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,8 +13,8 @@ public interface FeedJpaRepository extends JpaRepository<SocialFeed, Integer> {
     @Query("SELECT new com.example.server.feed.dto.FeedInfo(f) FROM SocialFeed f")
     List<FeedInfo> findAllFeeds();
 
-    @Query("SELECT new com.example.server.feed.dto.FeedResponse(f.feedId, f.imageId, f.user.userId, f.uploadDatetime, f.contents) FROM SocialFeed f WHERE f.user.userId = :uploaderId")
-    List<FeedResponse> findFeedsInfoByUploaderId(@Param("uploaderId") int uploaderId);
+    @Query("SELECT f FROM SocialFeed f WHERE f.user.userId = :uploaderId")
+    List<SocialFeed> findFeedsInfoByUploaderId(@Param("uploaderId") int uploaderId);
 
     @Query(value = "SELECT * FROM social_feed WHERE user_id IN :followingIds AND feed_id < :lastSeenId ORDER BY feed_id DESC LIMIT :limit", nativeQuery = true)
     List<SocialFeed> findFeedsByFollowersAfter(@Param("followingIds") List<Integer> followerIds, @Param("lastSeenId") int lastSeenId, @Param("limit") int limit);
