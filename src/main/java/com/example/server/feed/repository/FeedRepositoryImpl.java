@@ -69,4 +69,14 @@ public class FeedRepositoryImpl implements FeedRepository {
     public Page<SocialFeed> findAll(Pageable pageable) {
         return feedPagingRepository.findAll(pageable);
     }
+
+    @Override
+    public List<SocialFeed> findFeedsByFollowersAfter(List<Integer> followerIds, int lastSeenId, int limit) {
+        return feedJpaRepository.findFeedsByFollowersAfter(followerIds, lastSeenId, limit);
+    }
+
+    @Override
+    public List<SocialFeed> findInitialFeedsByFollowers(List<Integer> followerIds, int limit) {
+        return feedJpaRepository.findInitialFeedsByFollowers(followerIds, limit);
+    }
 }
