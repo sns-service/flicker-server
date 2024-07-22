@@ -1,68 +1,69 @@
 package com.example.server.follow.service;
 
 import com.example.server.exception.BadRequestException;
-import com.example.server.follow.dto.FollowInfo;
-import com.example.server.follow.entity.Follow;
 import com.example.server.follow.repository.FollowRepository;
 import com.example.server.user.dto.UserInfo;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.server.user.entity.User;
+import com.example.server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class FollowService {
 
     private final FollowRepository followRepository;
-    private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
-    public boolean isFollow(int userId, int followerId) {
-        return followRepository.findByUserIdAndFollowerId(userId, followerId).isPresent();
+    public boolean isFollow(int followerId, int followingId) {
+        return followRepository.isFollowing(followerId, followingId);
     }
 
     @Transactional
-    public FollowInfo followUser(int userId, int followerId) {
-        if (userId == followerId) {
+    public void followUser(int followerId, int followingId) {
+        if (followerId == followingId) {
             throw new BadRequestException();
         }
-        if (isFollow(userId, followerId)) {  // 이미 팔로우 한 경우에는, 더 이상 팔로우 할 것이 없다.
-            return null;
+        if (followRepository.isFollowing(followerId, followingId)) {  // 이미 팔로우 한 경우에는, 더 이상 팔로우 할 것이 없다.
+            return;
         }
-        Follow follow = followRepository.save(new Follow(userId, followerId));
-
-        return changeToFollowInfo(follow);
-    }
-
-    private static FollowInfo changeToFollowInfo(Follow follow) {
-        return FollowInfo.builder()
-                .followId(follow.getFollowId())
-                .userId(follow.getUserId())
-                .followerId(follow.getFollowerId())
-                .followDatetime(follow.getFollowDatetime())
-                .build();
+        followRepository.followUser(followerId, followingId);
     }
 
     @Transactional
-    public boolean unfollowUser(int userId, int followerId) {
-        Follow follow = followRepository.findByUserIdAndFollowerId(userId, followerId)
-                .orElseThrow(() -> new BadRequestException());
-
-        followRepository.delete(follow);
-        return true;
+    public void unfollowUser(int followerId, int followingId) {
+        if (followRepository.isFollowing(followerId, followingId)) {
+            throw new BadRequestException();
+        }
+        followRepository.unfollowUser(followerId, followingId);
     }
 
     /**
-     * 나를 팔로우 하는 사람들 (팔로워) 조회 */
+     * 내 팔로워들 조회 */
     public List<UserInfo> listFollower(int userId) {
-        return followRepository.findFollowersByUserId(userId);
+        List<Integer> followerIds = followRepository.getFollowerIds(userId);
+
+        // 팔로워 ID 목록을 기반으로 사용자 정보를 한 번의 쿼리로 조회
+        List<User> followers = userRepository.findUsersByIds(followerIds);
+
+        return followers.stream()
+                .map(UserInfo::new)
+                .collect(Collectors.toList());
     }
 
     /**
      * 내가 팔로우 하는 사람들 (팔로잉) 조회 */
     public List<UserInfo> listFollowing(int userId) {
-        return followRepository.findFollowingByUserId(userId);
+        List<Integer> followingIds = followRepository.getFollowingIds(userId);
+
+        List<User> followings = userRepository.findUsersByIds(followingIds);
+
+        return followings.stream()
+                .map(UserInfo::new)
+                .collect(Collectors.toList());
     }
 }

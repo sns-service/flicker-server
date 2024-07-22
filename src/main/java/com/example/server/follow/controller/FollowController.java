@@ -2,9 +2,8 @@ package com.example.server.follow.controller;
 
 import com.example.server.auth.util.SecurityContextHolderUtils;
 import com.example.server.follow.dto.FollowRequest;
-import com.example.server.user.dto.UserInfo;
-import com.example.server.follow.dto.FollowInfo;
 import com.example.server.follow.service.FollowService;
+import com.example.server.user.dto.UserInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,18 +28,18 @@ public class FollowController {
 
     @GetMapping("/follow/{userId}")
     public boolean isFollow(@PathVariable("userId") int userId) {
-        return followService.isFollow(userId, SecurityContextHolderUtils.getUserId());
+        return followService.isFollow(SecurityContextHolderUtils.getUserId(), userId);
     }
 
     @PostMapping("/follow")
-    public FollowInfo followUser(@RequestBody FollowRequest followRequest) {
+    public void followUser(@RequestBody FollowRequest followRequest) {
         int followerId = SecurityContextHolderUtils.getUserId();
-        return followService.followUser(followRequest.getUserId(), followerId);
+        followService.followUser(followerId, followRequest.getUserId());
     }
 
     @PostMapping("/unfollow")
-    public Boolean unfollowUser(@RequestBody FollowRequest unfollowRequest) {
+    public void unfollowUser(@RequestBody FollowRequest unfollowRequest) {
         int followerId = SecurityContextHolderUtils.getUserId();
-        return followService.unfollowUser(unfollowRequest.getUserId(), followerId);
+        followService.unfollowUser(followerId, unfollowRequest.getUserId());
     }
 }
