@@ -1,7 +1,6 @@
 package com.example.server.feed.repository;
 
 import com.example.server.feed.dto.FeedInfo;
-import com.example.server.feed.dto.FeedResponse;
 import com.example.server.feed.entity.SocialFeed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -41,7 +40,7 @@ public class FeedRepositoryImpl implements FeedRepository {
     }
 
     @Override
-    public List<FeedResponse> findFeedsInfoByUploaderId(int uploaderId) {
+    public List<SocialFeed> findFeedsInfoByUploaderId(int uploaderId) {
         return feedJpaRepository.findFeedsInfoByUploaderId(uploaderId);
     }
 
