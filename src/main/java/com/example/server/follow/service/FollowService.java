@@ -36,7 +36,7 @@ public class FollowService {
 
     @Transactional
     public void unfollowUser(int followerId, int followingId) {
-        if (followRepository.isFollowing(followerId, followingId)) {
+        if (!followRepository.isFollowing(followerId, followingId)) {
             throw new BadRequestException();
         }
         followRepository.unfollowUser(followerId, followingId);
