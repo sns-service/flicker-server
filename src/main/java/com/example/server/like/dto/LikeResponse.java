@@ -1,4 +1,4 @@
-package com.example.server.feed.dto;
+package com.example.server.like.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

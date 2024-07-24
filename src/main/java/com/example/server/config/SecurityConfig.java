@@ -65,9 +65,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/feeds/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/follows/**").permitAll()
                         .requestMatchers("/api/follows/**").authenticated()
                         .requestMatchers( "/api/feeds/**").authenticated()
                         .requestMatchers("/api/timeline/**").authenticated()
+                        .requestMatchers("/api/like/**").authenticated()
                         .anyRequest().denyAll()
                 );
 
