@@ -40,8 +40,8 @@ public class FeedRepositoryImpl implements FeedRepository {
     }
 
     @Override
-    public List<SocialFeed> findFeedsInfoByUploaderId(int uploaderId) {
-        return feedJpaRepository.findFeedsInfoByUploaderId(uploaderId);
+    public List<SocialFeed> findFeedsByUploaderId(int uploaderId) {
+        return feedJpaRepository.findFeedsByUploaderId(uploaderId);
     }
 
     @Override

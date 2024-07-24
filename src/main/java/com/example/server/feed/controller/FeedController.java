@@ -1,13 +1,14 @@
 package com.example.server.feed.controller;
 
 import com.example.server.auth.util.SecurityContextHolderUtils;
-import com.example.server.feed.dto.*;
+import com.example.server.feed.dto.CreateFeedRequest;
+import com.example.server.feed.dto.FeedResponse;
+import com.example.server.feed.dto.SocialPost;
 import com.example.server.feed.service.FeedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -17,23 +18,13 @@ public class FeedController {
 
     private final FeedService feedService;
 
-    @GetMapping
-    public List<FeedInfo> getAllFeeds() {
-        List<FeedInfo> result = new ArrayList<>();
-
-        for (FeedInfo feedInfo : feedService.getAllFeeds()) {
-            result.add(feedInfo);
-        }
-        return result;
-    }
-
     @GetMapping("/random")
     public List<SocialPost> listRandomFeeds() {
         return feedService.getRandomFeedsByPaging();
     }
 
-    @GetMapping("/user/{userId}")
-    public List<SocialPost> getUserFeeds(@PathVariable("userId") int userId) {
+    @GetMapping
+    public List<SocialPost> getUserFeeds(@RequestParam("userId") int userId) {
         return feedService.getAllFeedsByUploaderId(userId);
     }
 
@@ -48,7 +39,7 @@ public class FeedController {
     }
 
     @PostMapping
-    public SocialPost createFeed(@RequestBody CreateFeedRequest feedRequest) {
+    public FeedResponse createFeed(@RequestBody CreateFeedRequest feedRequest) {
         return feedService.createFeed(feedRequest, SecurityContextHolderUtils.getUserId());
     }
 
@@ -56,12 +47,5 @@ public class FeedController {
     public ResponseEntity<Void> deleteFeed(@PathVariable("id") int id) {
         feedService.deleteFeed(id, SecurityContextHolderUtils.getUserId());
         return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/like/{postId}")
-    public LikeResponse likeFeed(@PathVariable("postId") int postId) {
-        boolean isLike = feedService.likePost(SecurityContextHolderUtils.getUserId(), postId);
-        int count = feedService.countLike(postId);
-        return new LikeResponse(count, isLike);
     }
 }

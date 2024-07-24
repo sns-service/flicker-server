@@ -17,7 +17,7 @@ public interface FeedRepository {
     void delete(SocialFeed feed);
     Optional<SocialFeed> findById(int feedId);
     List<FeedInfo> findAllFeeds();
-    List<SocialFeed> findFeedsInfoByUploaderId(@Param("uploaderId") int uploaderId);
+    List<SocialFeed> findFeedsByUploaderId(@Param("uploaderId") int uploaderId);
     int likePost(int userId, int postId);
     int unlikePost(int userId, int postId);
     Boolean isLikePost(int userId, int postId);

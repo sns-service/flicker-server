@@ -20,7 +20,7 @@ public class TimelineController {
 
     @GetMapping
     public List<SocialPost> getUserTimeline(@RequestParam(required = false) Integer lastSeenId,
-                                            @RequestParam(defaultValue = "10") int limit) {
+                                            @RequestParam(defaultValue = "20") int limit) {
         int userId = SecurityContextHolderUtils.getUserId();
         return timelineService.getUserTimeline(userId, lastSeenId, limit);
     }

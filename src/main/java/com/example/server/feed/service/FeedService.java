@@ -3,6 +3,7 @@ package com.example.server.feed.service;
 import com.example.server.exception.BadRequestException;
 import com.example.server.feed.dto.CreateFeedRequest;
 import com.example.server.feed.dto.FeedInfo;
+import com.example.server.feed.dto.FeedResponse;
 import com.example.server.feed.dto.SocialPost;
 import com.example.server.feed.entity.SocialFeed;
 import com.example.server.feed.repository.FeedJpaRepository;
@@ -30,32 +31,25 @@ public class FeedService {
     private final FeedJpaRepository feedJpaRepository;
     private final UserRepository userRepository;
 
-    public List<FeedInfo> getAllFeeds() {
-        return feedRepository.findAllFeeds();
-    }
-
     public List<SocialPost> getAllFeedsByUploaderId(int uploaderId) {
-        List<SocialFeed> feeds = feedRepository.findFeedsInfoByUploaderId(uploaderId);
-
-        return feeds.stream()
-                .map(feed -> new SocialPost(feed, feedRepository.countLikes(feed.getFeedId())))
-                .collect(Collectors.toList());
+        List<SocialFeed> feeds = feedRepository.findFeedsByUploaderId(uploaderId);
+        return convertToSocialPost(feeds);
     }
 
     public SocialPost getFeedById(int feedId) {
-        SocialFeed socialFeed = feedRepository.findById(feedId).orElse(null);
-        return new SocialPost(socialFeed, feedRepository.countLikes(socialFeed.getFeedId()));
+        SocialFeed feed = feedRepository.findById(feedId).orElse(null);
+        return new SocialPost(feed, feedRepository.countLikes(feed.getFeedId()));
     }
 
     @Transactional
-    public SocialPost createFeed(CreateFeedRequest feedRequest, int userId) {
+    public FeedResponse createFeed(CreateFeedRequest feedRequest, int userId) {
         if (feedRequest.getUploaderId() != userId) {
             throw new BadRequestException();
         }
         SocialFeed socialFeed = convertToSocialFeed(feedRequest);
         feedRepository.save(socialFeed);
 
-        return new SocialPost(socialFeed, feedRepository.countLikes(socialFeed.getFeedId()));
+        return convertToSocialFeedResponse(socialFeed);
     }
 
     public void deleteFeed(int feedId, int userId) {
@@ -80,6 +74,22 @@ public class FeedService {
                 .build();
     }
 
+    private FeedResponse convertToSocialFeedResponse(SocialFeed socialFeed) {
+        return FeedResponse.builder()
+                .feedId(socialFeed.getFeedId())
+                .imageId(socialFeed.getImageId())
+                .uploaderId(socialFeed.getUser().getUserId())
+                .uploadDatetime(socialFeed.getUploadDatetime())
+                .contents(socialFeed.getContents())
+                .build();
+    }
+
+    private List<SocialPost> convertToSocialPost(List<SocialFeed> feeds) {
+        return feeds.stream()
+                .map(feed -> new SocialPost(feed, feedRepository.countLikes(feed.getFeedId())))
+                .collect(Collectors.toList());
+    }
+
     public List<SocialPost> getRandomFeedsByPaging() {
         int totalFeeds = (int) feedJpaRepository.count();
         int pageSize = 100;
@@ -101,8 +111,12 @@ public class FeedService {
             randomFeeds.add(feeds.get(i));
         }
 
-        return randomFeeds.stream()
-                .map(feed -> new SocialPost(feed, feedRepository.countLikes(feed.getFeedId())))
+        List<FeedInfo> feedInfoList = randomFeeds.stream()
+                .map(FeedInfo::new)
+                .collect(Collectors.toList());
+
+        return feedInfoList.stream()
+                .map(feedInfo -> new SocialPost(feedInfo, feedRepository.countLikes(feedInfo.getFeedId())))
                 .collect(Collectors.toList());
     }
 
