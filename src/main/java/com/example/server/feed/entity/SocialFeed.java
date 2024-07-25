@@ -15,6 +15,7 @@ import java.time.ZonedDateTime;
 @AllArgsConstructor
 @Builder
 @Getter
+@Table(name = "feed")
 public class SocialFeed {
 
     @Id
