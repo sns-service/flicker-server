@@ -26,7 +26,7 @@ public class JwtUtils {
     private static final long ACCESS_TOKEN_VALIDITY_TIME = TOKEN_VALIDITY_TIME_IN_MINUTES * 15; // 15분
 
     @Getter
-    private static final long REFRESH_TOKEN_VALIDITY_TIME = TOKEN_VALIDITY_TIME_IN_MINUTES * 60 * 48;  // 48시간
+    private static final long REFRESH_TOKEN_VALIDITY_TIME = TOKEN_VALIDITY_TIME_IN_MINUTES * 60 * 24 * 30;  // 30일
 
     public static String createAccessToken(User user, int refreshTokenId) {
         return Jwts.builder()
