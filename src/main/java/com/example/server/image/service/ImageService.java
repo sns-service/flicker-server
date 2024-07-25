@@ -46,7 +46,7 @@ public class ImageService {
             thumbnailFile.delete();
         }
 
-        return imageId;
+        return imageId+".jpg";
     }
 
     private void uploadToS3(File file, String key) throws IOException {
