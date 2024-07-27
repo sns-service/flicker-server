@@ -66,10 +66,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/feeds/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/follows/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
                         .requestMatchers("/api/follows/**").authenticated()
                         .requestMatchers( "/api/feeds/**").authenticated()
                         .requestMatchers("/api/timeline/**").authenticated()
                         .requestMatchers("/api/like/**").authenticated()
+                        .requestMatchers("/api/like/**").authenticated()
+                        .requestMatchers("/api/images/**").authenticated()
                         .anyRequest().denyAll()
                 );
 
