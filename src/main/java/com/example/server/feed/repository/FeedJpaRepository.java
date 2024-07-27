@@ -13,7 +13,7 @@ public interface FeedJpaRepository extends JpaRepository<SocialFeed, Integer> {
     @Query("SELECT new com.example.server.feed.dto.FeedInfo(f) FROM SocialFeed f")
     List<FeedInfo> findAllFeeds();
 
-    @Query("SELECT f FROM SocialFeed f WHERE f.user.userId = :uploaderId")
+    @Query("SELECT f FROM SocialFeed f WHERE f.user.userId = :uploaderId ORDER BY f.uploadDatetime DESC")
     List<SocialFeed> findFeedsByUploaderId(@Param("uploaderId") int uploaderId);
 
     @Query(value = "SELECT * FROM social_feed WHERE user_id IN :followingIds AND feed_id < :lastSeenId ORDER BY feed_id DESC LIMIT :limit", nativeQuery = true)

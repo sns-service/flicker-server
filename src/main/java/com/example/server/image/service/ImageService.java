@@ -1,5 +1,8 @@
 package com.example.server.image.service;
 
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.example.server.feed.repository.FeedJpaRepository;
 import lombok.RequiredArgsConstructor;
 import net.coobird.thumbnailator.Thumbnails;
@@ -7,12 +10,11 @@ import net.coobird.thumbnailator.geometry.Positions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
@@ -21,7 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ImageService {
 
-    private final S3Client s3Client;
+    private final AmazonS3Client amazonS3Client;
 
     @Value("${aws.s3.bucket}")
     private String bucketName;
@@ -50,15 +52,13 @@ public class ImageService {
     }
 
     private void uploadToS3(File file, String key) throws IOException {
-        try (InputStream inputStream = file.toURI().toURL().openStream()) {
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .contentType("image/jpeg")
-                    .build();
+        try (InputStream inputStream = new FileInputStream(file)) {
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType("image/jpeg");
+            metadata.setContentLength(file.length());
 
-            s3Client.putObject(putObjectRequest,
-                    software.amazon.awssdk.core.sync.RequestBody.fromInputStream(inputStream, file.length()));
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, inputStream, metadata);
+            amazonS3Client.putObject(putObjectRequest);
         }
     }
 }

@@ -34,3 +34,13 @@ sns:
   jwt:
     access-key: ${JWT_ACCESS_KEY}
     refresh-key: ${JWT_REFRESH_KEY}
+
+cloud:
+  aws:
+    credentials:
+      access-key: ${S3_ACCESS_KEY} # IAM에서 생성한 access-key
+      secret-key: ${S3_SECRET_KEY} # IAM에서 생성한 secret-key
+    region:
+      static: ap-northeast-2
+    s3:
+      bucket: flickerimage # 버킷 이름
