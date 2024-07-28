@@ -1,9 +1,9 @@
 package com.example.server.auth.handler;
 
+import com.example.server.auth.repository.RefreshTokenRepository;
 import com.example.server.auth.util.CookieUtils;
 import com.example.server.auth.util.JwtUtils;
 import com.example.server.auth.util.ResponseUtils;
-import com.example.server.auth.repository.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,8 +15,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 import java.io.IOException;
-
-import static com.example.server.auth.util.ResponseUtils.createResponseBody;
 
 public class CustomLogoutHandler implements LogoutSuccessHandler {
 

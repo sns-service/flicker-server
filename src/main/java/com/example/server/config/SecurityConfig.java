@@ -5,7 +5,6 @@ import com.example.server.auth.filter.JwtAuthenticationFilter;
 import com.example.server.auth.filter.JwtAuthorizationFilter;
 import com.example.server.auth.handler.CustomLogoutHandler;
 import com.example.server.auth.repository.RefreshTokenRepository;
-import com.example.server.auth.service.CustomUserDetailsService;
 import com.example.server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -27,9 +26,9 @@ import org.springframework.security.web.context.SecurityContextRepository;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CustomUserDetailsService customUserDetailsService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
+    private final CorsConfig corsConfig;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -44,8 +43,8 @@ public class SecurityConfig {
         );
 
         http
-                .cors().disable()
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfig.corsConfigurationSource())) // CORS 설정 추가
                 .formLogin(formLogin -> formLogin.disable())
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
