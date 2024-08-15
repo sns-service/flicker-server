@@ -2,7 +2,6 @@ package com.example.server.feed.service;
 
 import com.example.server.exception.BadRequestException;
 import com.example.server.feed.dto.CreateFeedRequest;
-import com.example.server.feed.dto.FeedInfo;
 import com.example.server.feed.dto.FeedResponse;
 import com.example.server.feed.dto.SocialPost;
 import com.example.server.feed.entity.SocialFeed;
@@ -100,7 +99,7 @@ public class FeedService {
         int randomPageNumber = random.nextInt(totalPages);
 
         Pageable pageable = PageRequest.of(randomPageNumber, pageSize);
-        Page<SocialFeed> feedPage = feedRepository.findAll(pageable);
+        Page<SocialFeed> feedPage = feedRepository.findAllWithUser(pageable);
 
         List<SocialFeed> feeds = new ArrayList<>(feedPage.getContent());
         Collections.shuffle(feeds);
@@ -111,13 +110,13 @@ public class FeedService {
             randomFeeds.add(feeds.get(i));
         }
 
-        List<FeedInfo> feedInfoList = randomFeeds.stream()
-                .map(FeedInfo::new)
-                .collect(Collectors.toList());
+        List<SocialPost> result = new ArrayList<>();
+        for (SocialFeed feed : randomFeeds) {
+            SocialPost socialPost = new SocialPost(feed, feedRepository.countLikes(feed.getFeedId()));
+            result.add(socialPost);
+        }
 
-        return feedInfoList.stream()
-                .map(feedInfo -> new SocialPost(feedInfo, feedRepository.countLikes(feedInfo.getFeedId())))
-                .collect(Collectors.toList());
+        return result;
     }
 
     public boolean likePost(int userId, int feedId) {

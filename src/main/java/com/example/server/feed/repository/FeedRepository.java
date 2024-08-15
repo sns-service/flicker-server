@@ -23,6 +23,7 @@ public interface FeedRepository {
     Boolean isLikePost(int userId, int postId);
     int countLikes(int postId);
     Page<SocialFeed> findAll(Pageable pageable);
-    List<SocialFeed> findFeedsByFollowersAfter(@Param("followingIds") List<Integer> followerIds, @Param("lastSeenId") int lastSeenId, @Param("limit") int limit);
-    List<SocialFeed> findInitialFeedsByFollowers(@Param("followerIds") List<Integer> followerIds, @Param("limit") int limit);
+    List<SocialFeed> findFeedsByFollowingsAfter(@Param("followingIds") List<Integer> followingIds, @Param("lastSeenId") int lastSeenId, Pageable pageable);
+    List<SocialFeed> findInitialFeedsByFollowings(@Param("followingIds") List<Integer> followingIds, Pageable pageable);
+    Page<SocialFeed> findAllWithUser(Pageable pageable);
 }
