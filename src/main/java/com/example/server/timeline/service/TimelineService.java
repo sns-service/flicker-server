@@ -5,6 +5,8 @@ import com.example.server.feed.entity.SocialFeed;
 import com.example.server.feed.repository.FeedRepository;
 import com.example.server.follow.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,10 +23,12 @@ public class TimelineService {
         List<Integer> followingIds = followRepository.getFollowingIds(userId);
         List<SocialFeed> feeds;
 
-        if (lastSeenId == null) {  // 초기 피드 조회
-            feeds = feedRepository.findInitialFeedsByFollowers(followingIds, limit);
-        } else {  // 커서 기반 추가 피드 조회
-            feeds = feedRepository.findFeedsByFollowersAfter(followingIds, lastSeenId, limit);
+        Pageable pageable = PageRequest.of(0, limit);
+
+        if (lastSeenId == null) {
+            feeds = feedRepository.findInitialFeedsByFollowings(followingIds, pageable);
+        } else {  // Cursor 기반 추가 피드 조회
+            feeds = feedRepository.findFeedsByFollowingsAfter(followingIds, lastSeenId, pageable);
         }
 
         return feeds.stream()

@@ -73,6 +73,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/like/**").authenticated()
                         .requestMatchers("/api/like/**").authenticated()
                         .requestMatchers("/api/images/**").authenticated()
+                        .requestMatchers("/api/timeline/**").authenticated()
                         .anyRequest().denyAll()
                 );
 
