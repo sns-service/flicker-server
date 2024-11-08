@@ -16,6 +16,7 @@ public class CorsConfig {
         config.addAllowedOriginPattern("https://hello.simple-sns.link");
         config.addAllowedOriginPattern("https://flicker.simple-sns.link");
         config.addAllowedOriginPattern("https://a.simple-sns.link");
+        config.addAllowedOriginPattern("http://flicker-server:8080"); // 네트워크 내 다른 컨테이너에서 접근할 수 있도록 허용
         config.addAllowedHeader("*"); // 모든 헤더 허용
         config.addAllowedMethod("*"); // 모든 메서드 허용
 
