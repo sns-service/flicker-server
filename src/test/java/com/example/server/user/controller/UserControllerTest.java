@@ -37,10 +37,9 @@ class UserControllerTest {
     void testSignUpUser() throws Exception {
         UserRequest userRequest = new UserRequest();
         userRequest.setUsername("testUser");
-        userRequest.setEmail("test@example.com");
         userRequest.setPlainPassword("password");
 
-        UserInfo userInfo = new UserInfo(1, "testUser", "test@example.com");
+        UserInfo userInfo = new UserInfo(1, "testUser");
         when(userService.createUser(any(UserRequest.class))).thenReturn(userInfo);
 
         mockMvc.perform(post("/api/users")
@@ -52,7 +51,7 @@ class UserControllerTest {
 
     @Test
     void testGetUserInfo() throws Exception {
-        UserInfo userInfo = new UserInfo(1, "testUser", "test@example.com");
+        UserInfo userInfo = new UserInfo(1, "testUser");
         when(userService.getUserById(1)).thenReturn(userInfo);
 
         mockMvc.perform(get("/api/users/1"))
@@ -62,7 +61,7 @@ class UserControllerTest {
 
     @Test
     void testGetUserInfoByName() throws Exception {
-        UserInfo userInfo = new UserInfo(1, "testUser", "test@example.com");
+        UserInfo userInfo = new UserInfo(1, "testUser");
         when(userService.getUserByName("testUser")).thenReturn(userInfo);
 
         mockMvc.perform(get("/api/users/name/testUser"))
@@ -76,7 +75,7 @@ class UserControllerTest {
         signInRequest.setUsername("testUser");
         signInRequest.setPlainPassword("password");
 
-        UserInfo userInfo = new UserInfo(1, "testUser", "test@example.com");
+        UserInfo userInfo = new UserInfo(1, "testUser");
         when(userService.signIn(any(UserRequest.class))).thenReturn(userInfo);
 
         mockMvc.perform(post("/api/users/signIn")

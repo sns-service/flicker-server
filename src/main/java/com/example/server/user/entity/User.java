@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "user")
+@Table(name = "users")
 @Getter
 @NoArgsConstructor
 public class User {
@@ -25,13 +25,11 @@ public class User {
     private List<SocialFeed> feeds = new ArrayList<>();
 
     private String username;
-    private String email;
     private String password;
 
     @Builder
-    public User(String username, String email, String password) {
+    public User(String username, String password) {
         this.username = username;
-        this.email = email;
         this.password = password;
     }
 }

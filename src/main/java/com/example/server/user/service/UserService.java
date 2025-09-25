@@ -25,11 +25,8 @@ public class UserService {
         if (userRepository.findByUsername(userRequest.getUsername()).isPresent()) {
             throw new BadRequestException("이미 존재하는 닉네임입니다.");
         }
-        if (userRepository.findByEmail(userRequest.getEmail()).isPresent()) {
-            throw new BadRequestException("이미 존재하는 이메일입니다.");
-        }
 
-        User user = new User(userRequest.getUsername(), userRequest.getEmail(), hashedPassword);
+        User user = new User(userRequest.getUsername(), hashedPassword);
         User savedUser = userRepository.save(user);
 
         return new UserInfo(savedUser);

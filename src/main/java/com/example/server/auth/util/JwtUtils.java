@@ -60,14 +60,14 @@ public class JwtUtils {
         Map<String, Object> map = new HashMap<>();
         map.put("userId", user.getUserId());
         map.put("username", user.getUsername());
-        map.put("email", user.getEmail());
+//        map.put("email", user.getEmail());
         map.put("refreshTokenId", refreshTokenId);
         return map;
     }
 
     private static Map<String, Object> createRefreshTokenClaims(User user) {
         Map<String, Object> map = new HashMap<>();
-        map.put("email", user.getEmail());
+//        map.put("email", user.getEmail());
         map.put("username", user.getUsername());
         return map;
     }

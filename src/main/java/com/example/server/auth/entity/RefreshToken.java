@@ -15,6 +15,7 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
+    @Column(name = "token_value")  // 예약어 회피
     private String value;
 
     @OneToOne(fetch = FetchType.LAZY)

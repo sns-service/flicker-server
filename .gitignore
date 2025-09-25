@@ -17,6 +17,11 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
+# Spring Boot application config files (ignore only these three)
+src/main/resources/application.yaml
+src/main/resources/application-dev.yaml
+src/main/resources/application-local.yaml
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
