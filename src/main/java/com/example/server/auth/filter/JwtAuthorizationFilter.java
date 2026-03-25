@@ -70,6 +70,13 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
 
             if (!checkIfRefreshTokenValid(refreshToken)) {
                 refreshTokenRepository.deleteByUserId(userId);
+
+                // 만료된 쿠키 삭제 (새로고침 시 에러 반복 방지)
+                ResponseCookie expiredAccess = generateAccessTokenCookie("", 0);
+                ResponseCookie expiredRefresh = generateRefreshTokenCookie("", 0);
+                response.addHeader(HttpHeaders.SET_COOKIE, expiredAccess.toString());
+                response.addHeader(HttpHeaders.SET_COOKIE, expiredRefresh.toString());
+
                 handleExceptionResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "refresh-token expired");
                 return;
             }

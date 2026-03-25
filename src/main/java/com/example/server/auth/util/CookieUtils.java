@@ -12,7 +12,6 @@ public class CookieUtils {
                 .sameSite("None")
                 .secure(true)
                 .path("/")
-                .maxAge(JwtUtils.getREFRESH_TOKEN_VALIDITY_TIME())
                 .build();
     }
 
@@ -32,7 +31,6 @@ public class CookieUtils {
                 .sameSite("None")
                 .secure(true)
                 .path("/")
-                .maxAge(time)
                 .build();
     }
 
