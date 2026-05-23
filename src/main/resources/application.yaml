@@ -1,5 +1,0 @@
-server:
-  shutdown: graceful
-spring:
-  autoconfigure:
-    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
