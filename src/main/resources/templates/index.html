@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Flicker(SNS)</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body>
+<header>
+    <div class="title" onclick="goToHome()">Flicker</div>
+    <div class="actions">
+        <a id="user-greeting" href="/login">Sign-In</a>
+        <a id="my-feeds-link" style="display: none;" href="#">Go to My Feeds</a>
+    </div>
+</header>
+
+<div style="height: 80px;"></div>
+<div class="sub-title">If you refresh the page, you can get another random posts!</div>
+<div class="container">
+    <div class="feed" id="feed-container">
+
+    </div>
+</div>
+
+<div id="myModal" class="modal" onclick="closeModal(event)">
+    <span class="close" onclick="closeModal(event)">&times;</span>
+    <img class="modal-content" id="img01">
+</div>
+
+<button class="floating-button" id="createPostButton">+</button>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        async function loadFeeds() {
+            try {
+                const response = await fetch(`/api/feeds/random`, { credentials: 'include' });
+                const posts = await response.json();
+                renderPosts(posts);
+            } catch (e) {
+                console.error("랜덤 피드 가져오기 실패:", e);
+            }
+        }
+
+        loadFeeds();
+
+        let userInfo = localStorage.getItem('userInfo');
+
+        if (userInfo) {
+            userInfo = JSON.parse(userInfo);
+            document.getElementById('user-greeting').innerText = `Hello, ${userInfo.username}`;
+            document.getElementById('user-greeting').href = '/mypage';
+            document.getElementById('my-feeds-link').style.display = 'inline-block';
+            document.getElementById('my-feeds-link').href = '/userposts?userId=' + userInfo.userId;
+            document.getElementById('my-feeds-link').innerText = '내 피드'; // 글자 변경
+        }
+
+        let modal = document.getElementById("myModal");
+        modal.style.display = "none";
+
+        // + 버튼 항상 표시
+        document.getElementById('createPostButton').style.display = 'block';
+
+        document.getElementById('createPostButton').addEventListener('click', function() {
+            userInfo = localStorage.getItem('userInfo'); // 변수 재할당
+            if (!userInfo) {
+                alert('Please sign in to create a post.');
+                localStorage.setItem('redirectAfterLogin', window.location.href); // 현재 URL 저장
+                window.location.href = '/login';
+            } else {
+                window.location.href = '/createpost';
+            }
+        });
+    });
+
+    function goToHome() {
+        window.location.href = '/';
+    }
+
+    function renderPosts(posts) {
+        const feedContainer = document.getElementById('feed-container');
+        feedContainer.innerHTML = '';
+        posts.forEach(post => {
+            const postElement = document.createElement('div');
+            postElement.className = 'feed-item';
+            postElement.innerHTML = `
+                <img src="https://flickerimage.s3.ap-northeast-2.amazonaws.com/thumbnail/${post.imageId}"
+                     data-fullsize-src="https://flickerimage.s3.ap-northeast-2.amazonaws.com/feed/${post.imageId}"
+                     alt="Feed Image"
+                     onclick="openModal(this)">
+                <p>${new Date(post.uploadDatetime).toLocaleString()}</p>
+                <p class="uploader-name" onclick="goToUserPosts(${post.uploaderId})">@${post.uploaderName}</p>
+                <p>${post.contents}</p>
+                <p class="like-button" onclick="toggleLike(${post.feedId}, this)">
+                    ❤️<span>${post.likes}</span>
+                </p>
+            `;
+            feedContainer.appendChild(postElement);
+        });
+    }
+
+    function openModal(imgElement) {
+        var modal = document.getElementById("myModal");
+        var modalImg = document.getElementById("img01");
+        modal.style.display = "flex";
+        modalImg.src = imgElement.getAttribute("data-fullsize-src");
+    }
+
+    function closeModal(event) {
+        var modal = document.getElementById("myModal");
+        if (event.target === modal || event.target.className === 'close') {
+            modal.style.display = "none";
+        }
+    }
+
+    function goToUserPosts(userId) {
+        window.location.href = '/userposts?userId=' + userId;
+    }
+
+
+    async function fetchUserPosts(userId) {
+        try {
+            const response = await fetch(`/api/feeds/?userId=${userId}`, {
+                credentials: 'include' // 쿠키 포함
+            });
+            const posts = await response.json();
+            renderPosts(posts);
+        } catch (error) {
+            console.error('Error fetching user posts:', error);
+        }
+    }
+
+    // function renderPosts(posts) {
+    //     const feedContainer = document.getElementById('feed-container');
+    //     feedContainer.innerHTML = '';
+    //     posts.forEach(post => {
+    //         const postElement = document.createElement('div');
+    //         postElement.className = 'feed-item';
+    //         postElement.innerHTML = `
+    //         <img src="https://flickerimage.s3.ap-northeast-2.amazonaws.com/thumbnail/${post.imageId}"
+    //              data-fullsize-src="https://flickerimage.s3.ap-northeast-2.amazonaws.com/feed/${post.imageId}"
+    //              alt="Feed Image"
+    //              onclick="openModal(this)">
+    //         <p>${new Date(post.uploadDatetime).toLocaleString()}</p>
+    //         <p class="uploader-name" onclick="goToUserPosts(${post.uploaderId})">@${post.uploaderName}</p>
+    //         <p>${post.contents}</p>
+    //         <p class="like-button" th:onclick="'toggleLike(' + ${post.feedId} + ', ' + ${post.uploaderId} + ', this)'">❤️<span th:text="${post.likes}">0</span></p>
+    //     `;
+    //         feedContainer.appendChild(postElement);
+    //     });
+    // }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    async function toggleLike(feedId, element) {
+        var userInfo = localStorage.getItem('userInfo'); // 변수 재할당
+        if (!userInfo) {
+            alert('Please sign in to like posts.');
+            localStorage.setItem('redirectAfterLogin', window.location.href); // 현재 URL 저장
+            window.location.href = '/login';
+        } else {
+            try {
+                const response = await fetch(`/api/like?feedId=${feedId}`, {
+                    method: 'POST',
+                    credentials: 'include' // 쿠키 포함
+                });
+                const result = await response.json();
+                element.querySelector('span').textContent = result.likeCount;
+                element.querySelector('span').style.color = result.like ? 'red' : 'black';
+            } catch (error) {
+                console.error('Error toggling like:', error);
+            }
+        }
+
+        // 디바운스를 적용한 좋아요 토글 함수
+        const debouncedToggleLike = debounce(toggleLike, 300);
+
+        // 예시: 좋아요 버튼 클릭 이벤트에 디바운스 적용
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.like-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const feedId = this.dataset.feedId;
+                    debouncedToggleLike(feedId, this);
+                });
+            });
+        });
+    }
+</script>
+</body>
+</html>

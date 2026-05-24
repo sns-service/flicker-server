@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>My Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        ul li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        a {
+            color: purple;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .logout {
+            color: red;
+        }
+        .unfollow {
+            color: red;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>My Page</h1>
+    <div style="display: flex; justify-content: space-between;">
+        <div>
+            <p><strong>Username:</strong> <span id="username"></span></p>
+        </div>
+    </div>
+    <h2>My Followers</h2>
+    <ul id="followers-list">
+        <!-- 팔로워 목록이 여기에 동적으로 추가됩니다 -->
+    </ul>
+    <h2>I'm Following</h2>
+    <ul id="followings-list">
+        <!-- 팔로우 목록이 여기에 동적으로 추가됩니다 -->
+    </ul>
+    <div style="display: flex; justify-content: space-between;">
+        <a href="#" id="logout" class="logout">Logout</a>
+        <a href="/">Back to Home</a>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('logout').addEventListener('click', function(event) {
+            event.preventDefault();
+            localStorage.removeItem('userInfo');
+            window.location.href = '/';
+        });
+
+        // 유저 정보가 없는 경우 로그인 페이지로 리다이렉트
+        var userInfo = localStorage.getItem('userInfo');
+        if (!userInfo) {
+            window.location.href = '/login';
+            return;
+        }
+
+        // 유저 정보 설정
+        userInfo = JSON.parse(userInfo);
+        document.getElementById('username').innerText = userInfo.username;
+
+        // 팔로워 목록을 가져오는 함수
+        function fetchFollowers() {
+            fetch(`/api/follows/followers`, {
+                credentials: 'include' // 쿠키 포함
+            })
+                .then(response => response.json())
+                .then(followers => {
+                    const followersList = document.getElementById('followers-list');
+                    followersList.innerHTML = '';
+                    followers.forEach(follower => {
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `<a href="/userposts?userId=${follower.userId}">@${follower.username}</a>`;
+                        followersList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error('Error fetching followers:', error));
+        }
+
+        // 팔로우 목록을 가져오는 함수
+        function fetchFollowings() {
+            fetch(`/api/follows/followings`, {
+                credentials: 'include' // 쿠키 포함
+            })
+                .then(response => response.json())
+                .then(followings => {
+                    const followingsList = document.getElementById('followings-list');
+                    followingsList.innerHTML = '';
+                    followings.forEach(following => {
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `<a href="/userposts?userId=${following.userId}">@${following.username}</a> <span class="unfollow" onclick="unfollow(${following.userId}, this)">Unfollow</span>`;
+                        followingsList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error('Error fetching followings:', error));
+        }
+
+        // 언팔로우 함수
+        window.unfollow = function(userId, element) {
+            fetch(`/api/follows/unfollow`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include', // 쿠키 포함
+                body: JSON.stringify({ userId })
+            })
+                .then(() => {
+                    const listItem = element.parentElement;
+                    listItem.parentElement.removeChild(listItem);
+                })
+                .catch(error => console.error('Error unfollowing user:', error));
+        };
+
+        fetchFollowers();
+        fetchFollowings();
+    });
+</script>
+</body>
+</html>

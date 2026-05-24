@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>User Posts</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            background-color: black;
+            color: white;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            z-index: 1000;
+        }
+        header .title {
+            margin-left: 11%;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        header .actions {
+            margin-right: 12%;
+        }
+        header .actions a {
+            font-size: 1.0em; /* 글자 크기 10% 감소 */
+            color: white; /* 글자 색상 흰색 유지 */
+            margin-left: 10px; /* 링크 사이에 간격 추가 */
+        }
+        header a {
+            color: white;
+        }
+        .sticky-title {
+            background-color: #f0f0f0;
+            padding: 10px 20px;
+            position: sticky;
+            top: 60px;
+            z-index: 999;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            border-bottom: 1px solid #ccc;
+            width: 100%;
+        }
+        .container {
+            padding: 100px 20px 20px 20px;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .feed {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 600px;
+            width: 100%;
+            align-items: center;
+        }
+        .feed-item {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .feed-item img {
+            max-width: 100%;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .feed-item p {
+            margin: 5px 0;
+            text-align: left;
+            width: 100%;
+        }
+        .feed-item .uploader-name {
+            font-weight: bold;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            max-width: 75%;
+            max-height: 75%;
+        }
+        .close {
+            color: white;
+            position: absolute;
+            top: 10px;
+            right: 25px;
+            font-size: 35px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: #bbb;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .like-button {
+            width: 100px;
+            cursor: pointer;
+        }
+        .floating-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #FF5733;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+            display: none; /* 기본적으로 표시하지 않음 */
+        }
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            position: fixed;
+            top: 80px;
+            right: 12%;
+            z-index: 1000;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-info p {
+            margin: 10px 0;
+        }
+        .user-info a {
+            color: #007bff;
+            cursor: pointer;
+        }
+        .user-info button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .user-info button:hover {
+            background-color: #0056b3;
+        }
+        .feed-item .delete-button {
+            background-color: gray;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: auto; /* 오른쪽으로 정렬 */
+        }
+        .back-button {
+            position: fixed;
+            bottom: 40px;
+            left: 150px; /* 오른쪽으로 이동 */
+            background-color: #FF7F50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        .back-button:hover {
+            background-color: #e04a2e;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="title" onclick="goToHome()">Flicker</div>
+    <div class="actions">
+        <a id="user-greeting" href="/login">Sign-In</a>
+        <a id="my-feeds-link" style="display: none;" href="#">내 피드</a>
+    </div>
+</header>
+<div class="user-info" id="user-info">
+    <p id="username">@username</p>
+    <button id="follow-button" onclick="toggleFollow()">Follow User</button>
+    <a href="#" onclick="goToTimeline()">Go Back to Home</a>
+</div>
+<div class="sticky-title" id="user-title"></div>
+<div class="container">
+    <div class="feed" id="feed-container">
+        <div th:each="post : ${posts}" class="feed-item">
+            <img th:src="@{'http://flicker-server:8080/api/images/view/' + ${post.imageId} + '?thumbnail=true'}"
+                 th:data-fullsize-src="@{'http://flicker-server:8080/api/images/view/' + ${post.imageId}}"
+                 alt="Feed Image"
+                 onclick="openModal(this)">
+            <p th:text="${post.formattedDate}">2024. 5. 23. 오후 11:05:24</p>
+            <p class="uploader-name" th:text="'@' + ${post.uploaderName}">@megan31</p>
+            <p th:text="${post.contents}">Attending a virtual dance class. Grooving in the living room.</p>
+            <p class="like-button" onclick="toggleLike(${post.feedId}, ${post.uploaderId}, this)">
+                ❤️<span th:text="${post.likes}">0</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div id="myModal" class="modal" onclick="closeModal(event)">
+    <span class="close" onclick="closeModal(event)">&times;</span>
+    <img class="modal-content" id="img01">
+</div>
+
+<button class="floating-button" id="createPostButton">+</button>
+<button class="back-button" onclick="goToHome()">홈으로 가기</button>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var userInfo = localStorage.getItem('userInfo');
+        var followerId = null;
+        if (userInfo) {
+            userInfo = JSON.parse(userInfo);
+            document.getElementById('user-greeting').innerText = `Hello, ${userInfo.username}`;
+            document.getElementById('user-greeting').href = '/mypage';
+            document.getElementById('my-feeds-link').style.display = 'inline-block';
+            document.getElementById('my-feeds-link').href = '/userposts?userId=' + userInfo.userId;
+            document.getElementById('my-feeds-link').innerText = '내 피드';
+            followerId = userInfo.userId;
+
+            // 로그인한 사용자의 페이지에서만 + 버튼을 표시
+            var urlParams = new URLSearchParams(window.location.search);
+            var userId = urlParams.get('userId');
+            if (userId == followerId) {
+                document.getElementById('createPostButton').style.display = 'block';
+            } else {
+                document.getElementById('createPostButton').style.display = 'none';
+            }
+        } else {
+            document.getElementById('createPostButton').style.display = 'none';
+        }
+
+        fetchUserPosts();
+
+        fetch(`/api/users/${userId}`)
+            .then(response => response.json())
+            .then(user => {
+                document.getElementById('username').innerText = `@${user.username}`;
+                if (userId == followerId) {
+                    document.getElementById('follow-button').style.display = 'none';
+                } else {
+                    checkFollowStatus(userId, followerId);
+                }
+            });
+
+        var modal = document.getElementById("myModal");
+        modal.style.display = "none";
+
+        document.getElementById('createPostButton').addEventListener('click', function() {
+            var userInfo = localStorage.getItem('userInfo'); // 변수 재할당
+            if (!userInfo) {
+                alert('Please sign in to create a post.');
+                localStorage.setItem('redirectAfterLogin', window.location.href); // 현재 URL 저장
+                window.location.href = '/login';
+            } else {
+                window.location.href = '/createpost';
+            }
+        });
+    });
+
+    async function fetchUserPosts() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+
+        try {
+            const response = await fetch(`/api/feeds?userId=${userId}`, {
+                credentials: 'include' // 쿠키 포함
+            });
+            const posts = await response.json();
+
+            if (posts.length > 0) {
+                document.getElementById('user-title').innerText = `${posts[0].uploaderName}'s Posts`;
+                renderPosts(posts);
+            } else {
+                // 사용자의 이름을 가져오기 위해 추가 요청 수행
+                const userResponse = await fetch(`/api/users/${userId}`, {
+                    credentials: 'include' // 쿠키 포함
+                });
+                const user = await userResponse.json();
+                document.getElementById('user-title').innerText = `${user.username}'s Posts`;
+                document.getElementById('feed-container').innerHTML = '<p>No posts to display.</p>';
+            }
+        } catch (error) {
+            console.error('Error fetching user posts:', error);
+            document.getElementById('user-title').innerText = `Error loading posts`;
+            document.getElementById('feed-container').innerHTML = '<p>Failed to load posts. Please try again later.</p>';
+        }
+    }
+
+    function goBack() {
+        window.history.back();
+    }
+
+    function goToHome() {
+        window.location.href = '/';
+    }
+
+    function openModal(imgElement) {
+        var modal = document.getElementById("myModal");
+        var modalImg = document.getElementById("img01");
+        modal.style.display = "flex";
+        modalImg.src = imgElement.getAttribute("data-fullsize-src");
+    }
+
+    function closeModal(event) {
+        var modal = document.getElementById("myModal");
+        if (event.target === modal || event.target.className === 'close') {
+            modal.style.display = "none";
+        }
+    }
+
+    // 포스트 목록을 렌더링하는 함수
+    function renderPosts(posts) {
+        const feedContainer = document.getElementById('feed-container');
+        feedContainer.innerHTML = '';
+        var userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            userInfo = JSON.parse(userInfo);
+        }
+
+        posts.forEach(post => {
+            const postElement = document.createElement('div');
+            postElement.className = 'feed-item';
+            postElement.innerHTML = `
+            <img src="https://flickerimage.s3.ap-northeast-2.amazonaws.com/thumbnail/${post.imageId}"
+                 data-fullsize-src="https://flickerimage.s3.ap-northeast-2.amazonaws.com/feed/${post.imageId}"
+                 alt="Feed Image"
+                 onclick="openModal(this)">
+            <p>${new Date(post.uploadDatetime).toLocaleString()}</p>
+            <p class="uploader-name">@${post.uploaderName}</p>
+            <p>${post.contents}</p>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <p class="like-button" onclick="toggleLike(${post.feedId}, this)">
+                    ❤️<span>${post.likes}</span>
+                </p>
+                ${userInfo && userInfo.userId === post.uploaderId ? `<button class="delete-button" onclick="deletePost(${post.feedId}, this)">Delete</button>` : ''}
+            </div>
+        `;
+            feedContainer.appendChild(postElement);
+        });
+    }
+
+    // 삭제 버튼 클릭 시 호출되는 함수
+    async function deletePost(feedId, element) {
+        if (confirm('정말 삭제하시겠습니까?')) {
+            try {
+                const response = await fetch(`/api/feeds/${feedId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const postElement = element.parentElement.parentElement;
+                    postElement.parentElement.removeChild(postElement);
+                } else {
+                    console.error('Error deleting post:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error deleting post:', error);
+            }
+        }
+    }
+
+    async function toggleLike(feedId, element) {
+        var userInfo = localStorage.getItem('userInfo'); // userInfo 재확인
+        if (!userInfo) {
+            alert('Please sign in to like posts.');
+            localStorage.setItem('redirectAfterLogin', window.location.href); // 현재 URL 저장
+            window.location.href = '/login';
+        } else {
+            try {
+                const response = await fetch(`/api/like?feedId=${feedId}`, {
+                    method: 'POST',
+                    credentials: 'include' // 쿠키 포함
+                });
+                const result = await response.json();
+                element.querySelector('span').textContent = result.likeCount;
+                element.querySelector('span').style.color = result.like ? 'red' : 'black';
+            } catch (error) {
+                console.error('Error toggling like:', error);
+            }
+        }
+    }
+
+    async function checkFollowStatus(userId, followerId) {
+        const followButton = document.getElementById('follow-button');
+        if (userId === followerId) {
+            followButton.style.display = 'none';
+            return;
+        }
+        if (!followerId) { // 비로그인 사용자
+            followButton.innerText = 'Follow User';
+            followButton.onclick = () => {
+                alert('Please sign in to follow users.');
+                window.location.href = '/login';
+            };
+            return;
+        }
+        const response = await fetch(`/api/follows/follow/${userId}`, {
+            credentials: 'include' // 쿠키 포함
+        });
+        const isFollow = await response.json();
+        followButton.innerText = isFollow ? 'Unfollow User' : 'Follow User';
+        followButton.onclick = () => toggleFollow(isFollow, userId, followerId);
+    }
+
+    function toggleFollow(isFollow, userId, followerId) {
+        const url = `/api/follows/${isFollow ? 'unfollow' : 'follow'}`;
+        if (!followerId) { // 비로그인 사용자
+            alert('Please sign in to follow users.');
+            localStorage.setItem('redirectAfterLogin', window.location.href); // 현재 URL 저장
+            window.location.href = '/login';
+            return;
+        }
+
+        try {
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // 쿠키 포함
+                body: JSON.stringify({ userId })
+            }).then(() => {
+                const followButton = document.getElementById('follow-button');
+                followButton.innerText = isFollow ? 'Follow User' : 'Unfollow User';
+                followButton.onclick = () => toggleFollow(!isFollow, userId, followerId);
+            });
+        } catch (error) {
+            console.error(`Error ${isFollow ? 'unfollowing' : 'following'} user:`, error);
+        }
+    }
+
+    function goToTimeline() {
+        window.location.href = '/';
+    }
+</script>
+</body>
+</html>

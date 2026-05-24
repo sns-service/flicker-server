@@ -1,7 +1,12 @@
 package com.example.server.web.controller;
 
+import com.example.server.auth.util.CookieUtils;
 import com.example.server.web.entity.FeedDto;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,13 +16,26 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 
+import static com.example.server.auth.util.CookieUtils.generateAccessTokenCookie;
+import static com.example.server.auth.util.CookieUtils.generateRefreshTokenCookie;
+
 @Controller
 @RequiredArgsConstructor
 public class ApiController {
 
     @GetMapping
-    public String indexPage() {
-        System.out.println("indexPage");
+    public String indexPage(HttpServletRequest request, HttpServletResponse response) {
+        String accessToken = CookieUtils.extractAccessTokenFromCookies(request);
+        String refreshToken = CookieUtils.extractRefreshTokenFromCookies(request);
+
+        // 액세스 토큰은 있는데 리프레시 토큰이 없으면 → 비정상 상태, 쿠키 강제 삭제
+        if (accessToken != null && refreshToken == null) {
+            ResponseCookie expiredAccess = generateAccessTokenCookie("", 0);
+            ResponseCookie expiredRefresh = generateRefreshTokenCookie("", 0);
+            response.addHeader(HttpHeaders.SET_COOKIE, expiredAccess.toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, expiredRefresh.toString());
+        }
+
         return "index";
     }
 

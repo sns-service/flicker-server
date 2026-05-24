@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Post</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .create-post-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .create-post-container h2 {
+            margin-bottom: 20px;
+        }
+        .create-post-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .create-post-container input, .create-post-container textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .create-post-container button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff5722;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .create-post-container button:hover {
+            background-color: #e64a19;
+        }
+        .image-preview {
+            max-width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+<div class="create-post-container">
+    <h2>Post</h2>
+    <form id="createPostForm">
+        <input type="file" id="imageFile" name="imageFile" required>
+        <img id="imagePreview" class="image-preview" alt="Image Preview" style="display:none;">
+        <textarea id="contents" name="contents" placeholder="Enter your post contents here..." required></textarea>
+        <button type="submit">Create</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById('imageFile').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('imagePreview');
+                img.src = e.target.result;
+                img.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('createPostForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const fileInput = document.getElementById('imageFile');
+        const contentsInput = document.getElementById('contents');
+        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+
+        if (!userInfo) {
+            alert('You need to log in first.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+
+        try {
+            const uploadResponse = await fetch(`/api/images/upload`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include' // 쿠키 포함
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error('Failed to upload image');
+            }
+
+            const imageId = await uploadResponse.text();
+
+            const feedResponse = await fetch(`/api/feeds`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include', // 쿠키 포함
+                body: JSON.stringify({
+                    imageId: imageId,
+                    uploaderId: userInfo.userId,
+                    contents: contentsInput.value
+                })
+            });
+
+            if (feedResponse.ok) {
+                alert('Post created successfully!');
+                window.location.href = `/userposts?userId=${userInfo.userId}`;
+            } else {
+                throw new Error('Failed to create post');
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up</title>
+    <link rel="stylesheet" th:href="@{/css/signup.css}" />
+</head>
+<body>
+<div class="signup-container">
+    <h2>Sign Up</h2>
+    <form id="signUpForm">
+        <div class="error-message" id="error-message"></div>
+        <label for="username">Nickname</label>
+        <input type="text" id="username" name="username" required>
+<!--        <label for="email">Email</label>-->
+<!--        <input type="email" id="email" name="email" required>-->
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+        <button type="submit">Sign Up</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById('signUpForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username').value;
+        // const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!/^[a-zA-Z0-9가-힣]+$/.test(username)) {
+            showError('Username cannot contain special characters.');
+            return;
+        }
+
+        if (password.length < 4) {
+            showError('Password must be at least 4 characters long.');
+            return;
+        }
+
+        const response = await fetch(`/api/users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                plainPassword: password
+            })
+        });
+
+        if (response.ok) {
+            alert('Registration successful! Redirecting to Login page.');
+            window.location.href = '/login';
+        } else if (response.status === 400) {
+            showError('Nickname already exists.');
+        } else {
+            const errorMessage = await response.text();
+            showError(errorMessage || 'Failed to sign up. Please try again.');
+        }
+    });
+
+    function showError(message) {
+        const errorMessageElement = document.getElementById('error-message');
+        errorMessageElement.textContent = message;
+        errorMessageElement.style.display = 'block';
+    }
+</script>
+</body>
+</html>
