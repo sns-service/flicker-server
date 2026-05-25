@@ -39,9 +39,6 @@ sns:
 
 cloud:
   aws:
-    credentials:
-      access-key: ${AWS_ACCESS_KEY}  # 운영용 AWS 키 변수 추가
-      secret-key: ${AWS_SECRET_KEY}  # 운영용 AWS 키 변수 추가
     region:
       static: ${AWS_REGION}
     s3:
