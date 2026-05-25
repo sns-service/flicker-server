@@ -40,3 +40,11 @@ user-service.yaml
 
 ### VS Code ###
 .vscode/
+
+
+# 빌드 산출물 제외
+*.jar
+
+# AWS 및 비밀키 파일 제외
+*.pem
+*.sh
