@@ -94,9 +94,26 @@ jobs:
                 "docker run -d --name flicker-app --network flicker-net -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod -e DB_HOST='"${{ secrets.DB_HOST }}"' -e DB_PORT='"${{ secrets.DB_PORT }}"' -e DB_NAME='"${{ secrets.DB_NAME }}"' -e DB_USERNAME='"${{ secrets.DB_USERNAME }}"' -e DB_PASSWORD='"${{ secrets.DB_PASSWORD }}"' -e REDIS_HOST='"${{ secrets.REDIS_HOST }}"' -e REDIS_PORT='"${{ secrets.REDIS_PORT }}"' -e JWT_ACCESS_KEY='"${{ secrets.JWT_ACCESS_KEY }}"' -e JWT_REFRESH_KEY='"${{ secrets.JWT_REFRESH_KEY }}"' -e S3_BUCKET='"${{ secrets.S3_BUCKET }}"' -e AWS_REGION=${{ env.AWS_REGION }} $REGISTRY/$REPO:$TAG",
                 "echo \"==> 이미지 정리\"",
                 "docker image prune -af --filter \"until=24h\" || true",
-                "echo \"==> Smoke test (최대 60초)\"",
-                "for i in $(seq 1 30); do if curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1; then echo \"OK after ${i} tries\"; exit 0; fi; sleep 2; done",
-                "echo \"Health check failed\"; docker logs --tail 50 flicker-app; exit 1"
+                "echo '==> Smoke test'",
+                "for i in $(seq 1 30); do",
+                "  if curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1; then",
+                "    echo \"[health] OK after ${i} tries\"",
+                "    break",
+                "  fi",
+                "  if [ $i -eq 30 ]; then",
+                "    echo '[health] FAILED'; docker logs --tail 50 flicker-app; exit 1",
+                "  fi",
+                "  sleep 2",
+                "done",
+                "echo '==> Endpoint check'",
+                "HEALTH_TIME=$(curl -o /dev/null -s -w '%{time_total}' http://localhost:8080/actuator/health)",
+                "ROOT_STATUS=$(curl -o /dev/null -s -w '%{http_code}' http://localhost:8080/)",
+                "echo \"[health] response_time=${HEALTH_TIME}s\"",
+                "echo \"[root] http_code=${ROOT_STATUS}\"",
+                "if [ \"${ROOT_STATUS}\" != \"200\" ] && [ \"${ROOT_STATUS}\" != \"302\" ] && [ \"${ROOT_STATUS}\" != \"401\" ]; then",
+                "  echo 'Root endpoint unexpected status'; exit 1",
+                "fi",
+                "echo '✅ All smoke tests passed'"
               ]
             }' \
             --query "Command.CommandId" \
@@ -156,3 +173,21 @@ jobs:
           
           echo "❌ Timeout"
           exit 1
+
+      - name: Notify success via SES
+        if: success()
+        run: |
+          aws ses send-email \
+          --region ${{ env.AWS_REGION }} \
+          --from "${{ secrets.SES_FROM_EMAIL }}" \
+          --destination "ToAddresses=${{ secrets.SES_TO_EMAIL }}" \
+          --message "Subject={Data='[Flicker] 배포 성공 - ${{ needs.build-and-push.outputs.image-tag }}',Charset=utf-8},Body={Html={Data='<h2>✅ Flicker 배포 성공</h2><ul><li><b>Image:</b> ${{ needs.build-and-push.outputs.image-tag }}</li><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그</a></li></ul>',Charset=utf-8}}"
+
+      - name: Notify failure via SES
+        if: failure()
+        run: |
+          aws ses send-email \
+            --region ${{ env.AWS_REGION }} \
+            --from "${{ secrets.SES_FROM_EMAIL }}" \
+            --destination "ToAddresses=${{ secrets.SES_TO_EMAIL }}" \
+            --message "Subject={Data='[Flicker] 🚨 배포 실패',Charset=utf-8},Body={Html={Data='<h2>❌ Flicker 배포 실패</h2><ul><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그 (디버깅)</a></li></ul><p>SSM 로그는 워크플로우 실행 페이지에서 확인 가능합니다.</p>',Charset=utf-8}}"
