@@ -166,17 +166,47 @@ jobs:
       - name: Notify success via SES
         if: success()
         run: |
+          cat > /tmp/email.json <<EOF
+          {
+          "Subject": {
+           "Data": "[Flicker] 배포 성공 - ${{ needs.build-and-push.outputs.image-tag }}",
+           "Charset": "utf-8"
+          },
+          "Body": {
+           "Html": {
+             "Data": "<h2>✅ Flicker 배포 성공</h2><ul><li><b>Image:</b> ${{ needs.build-and-push.outputs.image-tag }}</li><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그</a></li></ul>",
+             "Charset": "utf-8"
+           }
+          }
+          }
+          EOF
+          
           aws ses send-email \
-            --region ${{ env.AWS_REGION }} \
-            --from "${{ secrets.SES_FROM_EMAIL }}" \
-            --destination "ToAddresses=${{ secrets.SES_TO_EMAIL }}" \
-            --message "Subject={Data=[Flicker] 배포 성공 - ${{ needs.build-and-push.outputs.image-tag }},Charset=utf-8},Body={Html={Data=<h2>✅ Flicker 배포 성공</h2><ul><li><b>Image:</b> ${{ needs.build-and-push.outputs.image-tag }}</li><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그</a></li></ul>,Charset=utf-8}}"
+          --region ${{ env.AWS_REGION }} \
+          --from "${{ secrets.SES_FROM_EMAIL }}" \
+          --destination "ToAddresses=${{ secrets.SES_TO_EMAIL }}" \
+          --message file:///tmp/email.json
 
       - name: Notify failure via SES
         if: failure()
         run: |
+          cat > /tmp/email.json <<EOF
+          {
+            "Subject": {
+              "Data": "[Flicker] 🚨 배포 실패",
+              "Charset": "utf-8"
+            },
+            "Body": {
+              "Html": {
+                "Data": "<h2>❌ Flicker 배포 실패</h2><ul><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그 (디버깅)</a></li></ul>",
+                "Charset": "utf-8"
+              }
+            }
+          }
+          EOF
+          
           aws ses send-email \
             --region ${{ env.AWS_REGION }} \
             --from "${{ secrets.SES_FROM_EMAIL }}" \
             --destination "ToAddresses=${{ secrets.SES_TO_EMAIL }}" \
-            --message "Subject={Data=[Flicker] 🚨 배포 실패,Charset=utf-8},Body={Html={Data=<h2>❌ Flicker 배포 실패</h2><ul><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그 (디버깅)</a></li></ul>,Charset=utf-8}}"
+            --message file:///tmp/email.json
