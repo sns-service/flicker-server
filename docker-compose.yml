@@ -1,0 +1,43 @@
+services:
+  flicker-app:
+    image: ${IMAGE_URI}
+    container_name: ${CONTAINER_NAME}
+    restart: unless-stopped
+    networks:
+      - flicker-net
+    ports:
+      - "${HOST_PORT}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      JWT_ACCESS_KEY: ${JWT_ACCESS_KEY}
+      JWT_REFRESH_KEY: ${JWT_REFRESH_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      AWS_REGION: ${AWS_REGION}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - flicker-net
+    volumes:
+      - /home/ubuntu/redis-data:/data
+    command: redis-server --appendonly yes
+
+networks:
+  flicker-net:
+    name: flicker-net
+    external: true
