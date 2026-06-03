@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy to EC2 (Blue/Green)
 
 on:
   push:
@@ -42,23 +42,25 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker image
+      - name: Build and Push to ECR
         run: |
           docker build \
             -t ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.image-tag }} \
             -t ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest \
             .
-
-      - name: Push to ECR
-        run: |
           docker push ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.image-tag }}
           docker push ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           echo "✅ Pushed: ${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.image-tag }}"
 
-  deploy:
-    name: Deploy to EC2 via SSM
+  detect-active-color:
+    name: Detect Active Color
     runs-on: ubuntu-latest
     needs: build-and-push
+    outputs:
+      active-color: ${{ steps.detect.outputs.active-color }}
+      target-color: ${{ steps.detect.outputs.target-color }}
+      target-tg-arn: ${{ steps.detect.outputs.target-tg-arn }}
+      target-port: ${{ steps.detect.outputs.target-port }}
 
     steps:
       - name: Configure AWS credentials via OIDC
@@ -67,56 +69,89 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Send deployment command via SSM
+      - name: Detect current active target group
+        id: detect
+        run: |
+          CURRENT_TG=$(aws elbv2 describe-listeners \
+            --listener-arns "${{ secrets.ALB_LISTENER_ARN }}" \
+            --region ${{ env.AWS_REGION }} \
+            --query "Listeners[0].DefaultActions[0].TargetGroupArn" \
+            --output text)
+          
+          echo "Current active TG: ${CURRENT_TG}"
+          
+          if [ "${CURRENT_TG}" = "${{ secrets.TG_BLUE_ARN }}" ]; then
+            echo "active-color=blue" >> $GITHUB_OUTPUT
+            echo "target-color=green" >> $GITHUB_OUTPUT
+            echo "target-tg-arn=${{ secrets.TG_GREEN_ARN }}" >> $GITHUB_OUTPUT
+            echo "target-port=8081" >> $GITHUB_OUTPUT
+            echo "🔵 Active: blue → Deploying to: green (port 8081)"
+          else
+            echo "active-color=green" >> $GITHUB_OUTPUT
+            echo "target-color=blue" >> $GITHUB_OUTPUT
+            echo "target-tg-arn=${{ secrets.TG_BLUE_ARN }}" >> $GITHUB_OUTPUT
+            echo "target-port=8080" >> $GITHUB_OUTPUT
+            echo "🟢 Active: green → Deploying to: blue (port 8080)"
+          fi
+
+  deploy:
+    name: Deploy ${{ needs.detect-active-color.outputs.target-color }} container
+    runs-on: ubuntu-latest
+    needs: [build-and-push, detect-active-color]
+
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy new container via SSM
         id: ssm-deploy
         env:
           ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr-registry }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image-tag }}
+          TARGET_COLOR: ${{ needs.detect-active-color.outputs.target-color }}
+          TARGET_PORT: ${{ needs.detect-active-color.outputs.target-port }}
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploy flicker ${IMAGE_TAG}" \
+            --comment "Deploy ${TARGET_COLOR} flicker ${IMAGE_TAG}" \
             --region ${{ env.AWS_REGION }} \
             --parameters '{
               "commands": [
                 "set -e",
-                "export REGISTRY='"${ECR_REGISTRY}"'",
-                "export REPO='"${{ env.ECR_REPOSITORY }}"'",
-                "export TAG='"${IMAGE_TAG}"'",
+                "cd /home/ubuntu/flicker",
                 "echo \"==> ECR 로그인\"",
-                "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $REGISTRY",
+                "aws ecr get-login-password --region '"${{ env.AWS_REGION }}"' | docker login --username AWS --password-stdin '"${ECR_REGISTRY}"'",
+                "echo \"==> .env 파일 업데이트\"",
+                "sed -i \"s|^IMAGE_URI=.*|IMAGE_URI='"${ECR_REGISTRY}"'/'"${{ env.ECR_REPOSITORY }}"':'"${IMAGE_TAG}"'|\" .env",
+                "sed -i \"s|^CONTAINER_NAME=.*|CONTAINER_NAME=flicker-app-'"${TARGET_COLOR}"'|\" .env",
+                "sed -i \"s|^HOST_PORT=.*|HOST_PORT='"${TARGET_PORT}"'|\" .env",
                 "echo \"==> 새 이미지 pull\"",
-                "docker pull $REGISTRY/$REPO:$TAG",
-                "echo \"==> 기존 컨테이너 제거\"",
-                "docker rm -f flicker-app 2>/dev/null || true",
-                "echo \"==> 새 컨테이너 실행\"",
-                "docker run -d --name flicker-app --network flicker-net -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod -e DB_HOST='"${{ secrets.DB_HOST }}"' -e DB_PORT='"${{ secrets.DB_PORT }}"' -e DB_NAME='"${{ secrets.DB_NAME }}"' -e DB_USERNAME='"${{ secrets.DB_USERNAME }}"' -e DB_PASSWORD='"${{ secrets.DB_PASSWORD }}"' -e REDIS_HOST='"${{ secrets.REDIS_HOST }}"' -e REDIS_PORT='"${{ secrets.REDIS_PORT }}"' -e JWT_ACCESS_KEY='"${{ secrets.JWT_ACCESS_KEY }}"' -e JWT_REFRESH_KEY='"${{ secrets.JWT_REFRESH_KEY }}"' -e S3_BUCKET='"${{ secrets.S3_BUCKET }}"' -e AWS_REGION=${{ env.AWS_REGION }} $REGISTRY/$REPO:$TAG",
-                "echo \"==> 이미지 정리\"",
-                "docker image prune -af --filter \"until=24h\" || true",
-                "echo \"==> Smoke test - health check\"",
-                "for i in $(seq 1 30); do if curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1; then echo \"[health] OK after ${i} tries\"; break; fi; if [ $i -eq 30 ]; then echo \"[health] FAILED\"; docker logs --tail 50 flicker-app; exit 1; fi; sleep 2; done",
-                "echo \"==> Smoke test - endpoint check\"",
-                "HEALTH_TIME=$(curl -o /dev/null -s -w \"%{time_total}\" http://localhost:8080/actuator/health)",
-                "ROOT_STATUS=$(curl -o /dev/null -s -w \"%{http_code}\" http://localhost:8080/)",
-                "echo \"[health] response_time=${HEALTH_TIME}s\"",
-                "echo \"[root] http_code=${ROOT_STATUS}\"",
-                "if [ \"${ROOT_STATUS}\" != \"200\" ] && [ \"${ROOT_STATUS}\" != \"302\" ] && [ \"${ROOT_STATUS}\" != \"401\" ]; then echo \"Root endpoint unexpected status\"; exit 1; fi",
-                "echo \"All smoke tests passed\""
+                "docker compose pull flicker-app",
+                "echo \"==> '"${TARGET_COLOR}"' 컨테이너 실행 (포트 '"${TARGET_PORT}"')\"",
+                "docker rm -f flicker-app-'"${TARGET_COLOR}"' 2>/dev/null || true",
+                "docker compose up -d flicker-app",
+                "echo \"==> 컨테이너 상태 확인\"",
+                "sleep 5",
+                "docker ps --filter name=flicker-app-'"${TARGET_COLOR}"' --format \"{{.Names}} {{.Status}}\"",
+                "echo \"==> 로컬 헬스체크 (최대 60초)\"",
+                "for i in $(seq 1 30); do if curl -fsS http://localhost:'"${TARGET_PORT}"'/actuator/health > /dev/null 2>&1; then echo \"[health] '"${TARGET_COLOR}"' OK after ${i} tries\"; break; fi; if [ $i -eq 30 ]; then echo \"[health] FAILED\"; docker logs --tail 50 flicker-app-'"${TARGET_COLOR}"'; exit 1; fi; sleep 2; done",
+                "echo \"새 컨테이너 헬스체크 통과\""
               ]
             }' \
             --query "Command.CommandId" \
             --output text)
           
-          echo "Command ID: ${COMMAND_ID}"
           echo "command-id=${COMMAND_ID}" >> $GITHUB_OUTPUT
 
-      - name: Wait for SSM command to complete
+      - name: Wait for SSM deployment to complete
         run: |
           COMMAND_ID="${{ steps.ssm-deploy.outputs.command-id }}"
           INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
-
-          echo "==> SSM 명령 실행 대기 중..."
+          
           for i in $(seq 1 60); do
             STATUS=$(aws ssm get-command-invocation \
               --command-id "${COMMAND_ID}" \
@@ -124,11 +159,10 @@ jobs:
               --region ${{ env.AWS_REGION }} \
               --query "Status" \
               --output text 2>/dev/null || echo "Pending")
-
+          
             echo "[${i}/60] Status: ${STATUS}"
-
+          
             if [ "${STATUS}" = "Success" ]; then
-              echo "✅ 배포 성공"
               aws ssm get-command-invocation \
                 --command-id "${COMMAND_ID}" \
                 --instance-id "${INSTANCE_ID}" \
@@ -137,17 +171,16 @@ jobs:
                 --output text
               exit 0
             fi
-
-            if [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ] || [ "${STATUS}" = "TimedOut" ]; then
-              echo "❌ 배포 실패 (${STATUS})"
-              echo "--- STDOUT ---"
+          
+            if [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Ca
+          ncelled" ] || [ "${STATUS}" = "TimedOut" ]; then
+              echo "❌ 배포 실패"
               aws ssm get-command-invocation \
                 --command-id "${COMMAND_ID}" \
                 --instance-id "${INSTANCE_ID}" \
                 --region ${{ env.AWS_REGION }} \
                 --query "StandardOutputContent" \
                 --output text
-              echo "--- STDERR ---"
               aws ssm get-command-invocation \
                 --command-id "${COMMAND_ID}" \
                 --instance-id "${INSTANCE_ID}" \
@@ -156,36 +189,117 @@ jobs:
                 --output text
               exit 1
             fi
-
+          
             sleep 5
           done
-
+          
           echo "❌ Timeout"
           exit 1
+
+      - name: Register new container to target group
+        run: |
+          aws elbv2 register-targets \
+            --target-group-arn "${{ needs.detect-active-color.outputs.target-tg-arn }}" \
+            --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${{ needs.detect-active-color.outputs.target-port }} \
+            --region ${{ env.AWS_REGION }}
+          echo "타겟 등록 완료"
+
+      - name: Wait for target to be healthy
+        run: |
+          TG_ARN="${{ needs.detect-active-color.outputs.target-tg-arn }}"
+          
+          for i in $(seq 1 30); do
+            STATUS=$(aws elbv2 describe-target-health \
+              --target-group-arn "${TG_ARN}" \
+              --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${{ needs.detect-active-color.outputs.target-port }} \
+              --region ${{ env.AWS_REGION }} \
+              --query "TargetHealthDescriptions[0].TargetHealth.State" \
+              --output text)
+          
+            echo "[${i}/30] Target Health: ${STATUS}"
+          
+            if [ "${STATUS}" = "healthy" ]; then
+              echo "✅ 새 컨테이너 ALB 헬스체크 통과"
+              exit 0
+            fi
+          
+            if [ "${STATUS}" = "unused" ]; then
+              echo "타겟 등록 대기 중..."
+            fi
+          
+            sleep 5
+          done
+          
+          echo "❌ 새 컨테이너가 healthy 상태가 되지 않음 (트래픽 전환 안 함)"
+          exit 1
+
+      - name: Switch ALB traffic to new color
+        run: |
+          aws elbv2 modify-listener \
+            --listener-arn "${{ secrets.ALB_LISTENER_ARN }}" \
+            --default-actions Type=forward,TargetGroupArn=${{ needs.detect-active-color.outputs.target-tg-arn }} \
+            --region ${{ env.AWS_REGION }}
+          echo "🔀 ALB 트래픽 전환 완료 → ${{ needs.detect-active-color.outputs.target-color }}"
+
+      - name: Cleanup old container
+        env:
+          ACTIVE_COLOR: ${{ needs.detect-active-color.outputs.active-color }}
+        run: |
+          # 옛 컨테이너의 포트
+          if [ "${ACTIVE_COLOR}" = "blue" ]; then
+            OLD_PORT=8080
+          else
+            OLD_PORT=8081
+          fi
+          
+          # ALB Target Group에서 옛 컨테이너 deregister
+          if [ "${ACTIVE_COLOR}" = "blue" ]; then
+            OLD_TG_ARN="${{ secrets.TG_BLUE_ARN }}"
+          else
+            OLD_TG_ARN="${{ secrets.TG_GREEN_ARN }}"
+          fi
+          
+          echo "==> 옛 타겟 deregister"
+          aws elbv2 deregister-targets \
+            --target-group-arn "${OLD_TG_ARN}" \
+            --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${OLD_PORT} \
+            --region ${{ env.AWS_REGION }} || true
+          
+          # 옛 컨테이너 종료 (SSM으로)
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Cleanup ${ACTIVE_COLOR} container" \
+            --region ${{ env.AWS_REGION }} \
+            --parameters commands="[\"docker rm -f flicker-app-${ACTIVE_COLOR} 2>/dev/null || true\",\"docker image prune -af --filter \\\"until=24h\\\" || true\",\"echo Cleanup done\"]" \
+            --query "Command.CommandId" \
+            --output text)
+          
+          echo "Cleanup command: ${COMMAND_ID}"
 
       - name: Notify success via SES
         if: success()
         run: |
           cat > /tmp/email.json <<EOF
           {
-          "Subject": {
-           "Data": "[Flicker] 배포 성공 - ${{ needs.build-and-push.outputs.image-tag }}",
-           "Charset": "utf-8"
-          },
-          "Body": {
-           "Html": {
-             "Data": "<h2>✅ Flicker 배포 성공</h2><ul><li><b>Image:</b> ${{ needs.build-and-push.outputs.image-tag }}</li><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그</a></li></ul>",
-             "Charset": "utf-8"
-           }
-          }
+            "Subject": {
+              "Data": "[Flicker] 배포 성공 (${{ needs.detect-active-color.outputs.target-color }}) - ${{ needs.build-and-push.outputs.image-tag }}",
+              "Charset": "utf-8"
+            },
+            "Body": {
+              "Html": {
+                "Data": "<h2>✅ Flicker Blue/Green 배포 성공</h2><ul><li><b>New Active:</b> ${{ needs.detect-active-color.outputs.target-color }}</li><li><b>Image:</b> ${{ needs.build-and-push.outputs.image-tag }}</li><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그</a></li></ul>",
+                "Charset": "utf-8"
+              }
+            }
           }
           EOF
           
           aws ses send-email \
-          --region ${{ env.AWS_REGION }} \
-          --from "${{ secrets.SES_FROM_EMAIL }}" \
-          --destination "ToAddresses=${{ secrets.SES_TO_EMAIL }}" \
-          --message file:///tmp/email.json
+            --region ${{ env.AWS_REGION }} \
+            --from "${{ secrets.SES_FROM_EMAIL }}" \
+            --destination "ToAddresses=${{ secrets.SES_TO_EMAIL }}" \
+            --message file:///tmp/email.json
 
       - name: Notify failure via SES
         if: failure()
@@ -193,12 +307,12 @@ jobs:
           cat > /tmp/email.json <<EOF
           {
             "Subject": {
-              "Data": "[Flicker] 🚨 배포 실패",
+              "Data": "[Flicker] 🚨 Blue/Green 배포 실패",
               "Charset": "utf-8"
             },
             "Body": {
               "Html": {
-                "Data": "<h2>❌ Flicker 배포 실패</h2><ul><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그 (디버깅)</a></li></ul>",
+                "Data": "<h2>❌ Flicker 배포 실패</h2><ul><li><b>Target Color:</b> ${{ needs.detect-active-color.outputs.target-color }}</li><li><b>Branch:</b> ${{ github.ref_name }}</li><li><b>Actor:</b> ${{ github.actor }}</li><li><b>Commit:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\">${{ github.sha }}</a></li><li><b>Workflow:</b> <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">실행 로그 (디버깅)</a></li></ul><p>옛 컨테이너는 그대로 유지되어 트래픽은 계속 처리됩니다.</p>",
                 "Charset": "utf-8"
               }
             }
