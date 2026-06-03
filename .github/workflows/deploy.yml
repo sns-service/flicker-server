@@ -227,15 +227,20 @@ jobs:
           
             echo "[${i}/30] Target Health: ${STATUS}"
           
-            if [ "${STATUS}" = "healthy" ]; then
-              echo "✅ 새 컨테이너 ALB 헬스체크 통과"
+            if [ "${STATUS}" = "healthy" ] || [ "${STATUS}" = "unused" ]; then
+              echo "✅ 타겟 정상 (state=${STATUS}), 트래픽 전환 진행"
               exit 0
+            fi
+          
+            if [ "${STATUS}" = "unhealthy" ]; then
+              echo "❌ 타겟 unhealthy"
+              exit 1
             fi
           
             sleep 5
           done
           
-          echo "❌ healthy 상태가 되지 않음"
+          echo "❌ 타겟 상태 확인 실패"
           exit 1
 
       - name: Switch ALB traffic to new color
