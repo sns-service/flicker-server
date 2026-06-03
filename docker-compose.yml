@@ -1,13 +1,13 @@
 services:
-  flicker-app:
+  flicker-app-blue:
     image: ${IMAGE_URI}
-    container_name: ${CONTAINER_NAME}
+    container_name: flicker-app-blue
     restart: unless-stopped
     networks:
       - flicker-net
     ports:
-      - "${HOST_PORT}:8080"
-    environment:
+      - "8080:8080"
+    environment: &app_env
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -20,12 +20,18 @@ services:
       JWT_REFRESH_KEY: ${JWT_REFRESH_KEY}
       S3_BUCKET: ${S3_BUCKET}
       AWS_REGION: ${AWS_REGION}
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
-      start_period: 30s
+    profiles: ["blue"]
+
+  flicker-app-green:
+    image: ${IMAGE_URI}
+    container_name: flicker-app-green
+    restart: unless-stopped
+    networks:
+      - flicker-net
+    ports:
+      - "8081:8080"
+    environment: *app_env
+    profiles: ["green"]
 
   redis:
     image: redis:7
