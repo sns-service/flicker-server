@@ -59,7 +59,6 @@ jobs:
     outputs:
       active-color: ${{ steps.detect.outputs.active-color }}
       target-color: ${{ steps.detect.outputs.target-color }}
-      target-tg-arn: ${{ steps.detect.outputs.target-tg-arn }}
       target-port: ${{ steps.detect.outputs.target-port }}
 
     steps:
@@ -83,13 +82,11 @@ jobs:
           if [ "${CURRENT_TG}" = "${{ secrets.TG_BLUE_ARN }}" ]; then
             echo "active-color=blue" >> $GITHUB_OUTPUT
             echo "target-color=green" >> $GITHUB_OUTPUT
-            echo "target-tg-arn=${{ secrets.TG_GREEN_ARN }}" >> $GITHUB_OUTPUT
             echo "target-port=8081" >> $GITHUB_OUTPUT
             echo "🔵 Active: blue → Deploying to: green (port 8081)"
           else
             echo "active-color=green" >> $GITHUB_OUTPUT
             echo "target-color=blue" >> $GITHUB_OUTPUT
-            echo "target-tg-arn=${{ secrets.TG_BLUE_ARN }}" >> $GITHUB_OUTPUT
             echo "target-port=8080" >> $GITHUB_OUTPUT
             echo "🟢 Active: green → Deploying to: blue (port 8080)"
           fi
@@ -193,21 +190,37 @@ jobs:
           exit 1
 
       - name: Register new container to target group
+        env:
+          TARGET_COLOR: ${{ needs.detect-active-color.outputs.target-color }}
+          TARGET_PORT: ${{ needs.detect-active-color.outputs.target-port }}
         run: |
+          if [ "${TARGET_COLOR}" = "blue" ]; then
+            TARGET_TG_ARN="${{ secrets.TG_BLUE_ARN }}"
+          else
+            TARGET_TG_ARN="${{ secrets.TG_GREEN_ARN }}"
+          fi
+          
           aws elbv2 register-targets \
-            --target-group-arn "${{ needs.detect-active-color.outputs.target-tg-arn }}" \
-            --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${{ needs.detect-active-color.outputs.target-port }} \
+            --target-group-arn "${TARGET_TG_ARN}" \
+            --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${TARGET_PORT} \
             --region ${{ env.AWS_REGION }}
-          echo "타겟 등록 완료"
+          echo "타겟 등록 완료 → ${TARGET_COLOR}"
 
       - name: Wait for target to be healthy
+        env:
+          TARGET_COLOR: ${{ needs.detect-active-color.outputs.target-color }}
+          TARGET_PORT: ${{ needs.detect-active-color.outputs.target-port }}
         run: |
-          TG_ARN="${{ needs.detect-active-color.outputs.target-tg-arn }}"
+          if [ "${TARGET_COLOR}" = "blue" ]; then
+            TG_ARN="${{ secrets.TG_BLUE_ARN }}"
+          else
+            TG_ARN="${{ secrets.TG_GREEN_ARN }}"
+          fi
           
           for i in $(seq 1 30); do
             STATUS=$(aws elbv2 describe-target-health \
               --target-group-arn "${TG_ARN}" \
-              --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${{ needs.detect-active-color.outputs.target-port }} \
+              --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${TARGET_PORT} \
               --region ${{ env.AWS_REGION }} \
               --query "TargetHealthDescriptions[0].TargetHealth.State" \
               --output text)
@@ -219,23 +232,27 @@ jobs:
               exit 0
             fi
           
-            if [ "${STATUS}" = "unused" ]; then
-              echo "타겟 등록 대기 중..."
-            fi
-          
             sleep 5
           done
           
-          echo "❌ 새 컨테이너가 healthy 상태가 되지 않음 (트래픽 전환 안 함)"
+          echo "❌ healthy 상태가 되지 않음"
           exit 1
 
       - name: Switch ALB traffic to new color
+        env:
+          TARGET_COLOR: ${{ needs.detect-active-color.outputs.target-color }}
         run: |
+          if [ "${TARGET_COLOR}" = "blue" ]; then
+            TG_ARN="${{ secrets.TG_BLUE_ARN }}"
+          else
+            TG_ARN="${{ secrets.TG_GREEN_ARN }}"
+          fi
+          
           aws elbv2 modify-listener \
             --listener-arn "${{ secrets.ALB_LISTENER_ARN }}" \
-            --default-actions Type=forward,TargetGroupArn=${{ needs.detect-active-color.outputs.target-tg-arn }} \
+            --default-actions Type=forward,TargetGroupArn=${TG_ARN} \
             --region ${{ env.AWS_REGION }}
-          echo "🔀 ALB 트래픽 전환 완료 → ${{ needs.detect-active-color.outputs.target-color }}"
+          echo "🔀 ALB 트래픽 전환 완료 → ${TARGET_COLOR}"
 
       - name: Cleanup old container
         env:
