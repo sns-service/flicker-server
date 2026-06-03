@@ -206,7 +206,28 @@ jobs:
             --region ${{ env.AWS_REGION }}
           echo "타겟 등록 완료 → ${TARGET_COLOR}"
 
-      - name: Wait for target to be healthy
+      - name: Attach green TG to listener with weight 0
+        env:
+          TARGET_COLOR: ${{ needs.detect-active-color.outputs.target-color }}
+          ACTIVE_COLOR: ${{ needs.detect-active-color.outputs.active-color }}
+        run: |
+          if [ "${TARGET_COLOR}" = "blue" ]; then
+            TARGET_TG_ARN="${{ secrets.TG_BLUE_ARN }}"
+            ACTIVE_TG_ARN="${{ secrets.TG_GREEN_ARN }}"
+          else
+            TARGET_TG_ARN="${{ secrets.TG_GREEN_ARN }}"
+            ACTIVE_TG_ARN="${{ secrets.TG_BLUE_ARN }}"
+          fi
+          
+          # 현재 활성(active) TG는 weight 100, 새 타겟(target) TG는 weight 0
+          # → 새 TG가 Listener에 붙어 health check는 돌지만 트래픽은 0
+          aws elbv2 modify-listener \
+            --listener-arn "${{ secrets.ALB_LISTENER_ARN }}" \
+            --default-actions "Type=forward,ForwardConfig={TargetGroups=[{TargetGroupArn=${ACTIVE_TG_ARN},Weight=100},{TargetGroupArn=${TARGET_TG_ARN},Weight=0}]}" \
+            --region ${{ env.AWS_REGION }}
+          echo "🔗 green TG를 weight 0으로 Listener에 부착 (트래픽은 여전히 100% ${ACTIVE_COLOR})"
+
+      - name: Wait for new target to be HEALTHY
         env:
           TARGET_COLOR: ${{ needs.detect-active-color.outputs.target-color }}
           TARGET_PORT: ${{ needs.detect-active-color.outputs.target-port }}
@@ -216,34 +237,35 @@ jobs:
           else
             TG_ARN="${{ secrets.TG_GREEN_ARN }}"
           fi
-          
-          for i in $(seq 1 30); do
+
+          for i in $(seq 1 40); do
             STATUS=$(aws elbv2 describe-target-health \
               --target-group-arn "${TG_ARN}" \
               --targets Id=${{ secrets.EC2_INSTANCE_ID }},Port=${TARGET_PORT} \
               --region ${{ env.AWS_REGION }} \
               --query "TargetHealthDescriptions[0].TargetHealth.State" \
               --output text)
-          
-            echo "[${i}/30] Target Health: ${STATUS}"
-          
-            if [ "${STATUS}" = "healthy" ] || [ "${STATUS}" = "unused" ]; then
-              echo "✅ 타겟 정상 (state=${STATUS}), 트래픽 전환 진행"
+
+            echo "[${i}/40] Target Health: ${STATUS}"
+
+            # 이번엔 반드시 healthy 기다림 (unused 통과 안 함)
+            if [ "${STATUS}" = "healthy" ]; then
+              echo "✅ 새 타겟 ALB 기준 healthy 확인 → 전환 안전"
               exit 0
             fi
-          
+
             if [ "${STATUS}" = "unhealthy" ]; then
-              echo "❌ 타겟 unhealthy"
+              echo "❌ 새 타겟 unhealthy → 전환 중단 (기존 트래픽 유지)"
               exit 1
             fi
-          
-            sleep 5
+
+            sleep 3
           done
-          
-          echo "❌ 타겟 상태 확인 실패"
+
+          echo "❌ healthy 대기 timeout → 전환 중단"
           exit 1
 
-      - name: Switch ALB traffic to new color
+      - name: Switch ALB traffic to new color (100%)
         env:
           TARGET_COLOR: ${{ needs.detect-active-color.outputs.target-color }}
         run: |
@@ -252,12 +274,13 @@ jobs:
           else
             TG_ARN="${{ secrets.TG_GREEN_ARN }}"
           fi
-          
+
+          # 새 색 100%로 전환 — 이미 healthy라 503 공백 없음
           aws elbv2 modify-listener \
             --listener-arn "${{ secrets.ALB_LISTENER_ARN }}" \
             --default-actions Type=forward,TargetGroupArn=${TG_ARN} \
             --region ${{ env.AWS_REGION }}
-          echo "🔀 ALB 트래픽 전환 완료 → ${TARGET_COLOR}"
+          echo "🔀 트래픽 100% 전환 완료 → ${TARGET_COLOR} (다운타임 0)"
 
       - name: Cleanup old container
         env:
