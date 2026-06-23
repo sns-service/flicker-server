@@ -275,12 +275,19 @@ jobs:
             TG_ARN="${{ secrets.TG_GREEN_ARN }}"
           fi
 
-          # 새 색 100%로 전환 — 이미 healthy라 503 공백 없음
+          # HTTP Listener 전환
           aws elbv2 modify-listener \
             --listener-arn "${{ secrets.ALB_LISTENER_ARN }}" \
             --default-actions Type=forward,TargetGroupArn=${TG_ARN} \
             --region ${{ env.AWS_REGION }}
-          echo "🔀 트래픽 100% 전환 완료 → ${TARGET_COLOR} (다운타임 0)"
+          echo "🔀 HTTP Listener 전환 완료 → ${TARGET_COLOR}"
+          
+          # HTTPS Listener 전환
+          aws elbv2 modify-listener \
+            --listener-arn "${{ secrets.ALB_LISTENER_HTTPS_ARN }}" \
+            --default-actions Type=forward,TargetGroupArn=${TG_ARN} \
+            --region ${{ env.AWS_REGION }}
+          echo "🔀 HTTPS Listener 전환 완료 → ${TARGET_COLOR}"
 
       - name: Cleanup old container
         env:
